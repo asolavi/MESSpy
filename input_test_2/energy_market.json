@@ -9,6 +9,13 @@
 
 "inflation rate": { "electricity": 0.02,
                     "gas":0.08},
+                               
+"Construction_costs":  {"application": false,
+                        "engineering": 0.15,
+                        "installation": 0.3,
+                        "excluded tech": []},
+
+"Additional Opex":  {"application": false},
 					      
 "investment years": 30
 }

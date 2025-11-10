@@ -7,28 +7,21 @@ class heatpump:
         def __init__(self,parameters):
             
             """
-            Create heat-pump object
+            Create heat-pump object.
             
-            Parameters
-            ----------
-            parameters : dict
-            
-                "type": 1 = air-water (other types not yet implemented...)
-                
-                "nom Pth": float [kW] nominal condition: t_amb=5° t_out=35° 6000 rpm
-                
-                "t rad heat": float [C°] temperature radiant system in heating mode
-                "t rad cool": float [C°] temperatura radiant system in cooling mode
-                
-                "inertial TES volume": thermal energy storage float [lt]
-                "inertial TES dispersion": float [W/m2K]
+            Inputs:
+                parameters: dict
+                    "type": 1 = air-water (other types not yet implemented...)
+                    "nom Pth": nominal condition: t_amb=5° t_out=35° 6000 rpm [kW]
+                    "t rad heat": temperature radiant system in heating mode [C°]
+                    "t rad cool": temperatura radiant system in cooling mode [C°]
+                    "inertial TES volume": thermal energy storage [lt]
+                    "inertial TES dispersion": [W/m2K]
                                           
-            Returns
-            -------
-            Air-water HP object able to:
-                ...
-                
-    
+            Outputs: air-water HP object able to:
+                supply or absorb heat .use(step, p_th, p_ele, t_amb)
+                keep track of TES temperature and demand satisfaction .i_TES_story and .satisfaction_story
+                monitor performance (COP) .cop_story
             """
         
             self.cost = False # will be updated with tec_cost()
@@ -52,7 +45,6 @@ class heatpump:
             ### stories #######################################################
             self.i_TES_story = np.zeros(c.timestep_number) # T_inertial_TES
             self.satisfaction_story = np.zeros(c.timestep_number) # 0 no demand, 1 demand satisfied by iTES, 2 demand satisfied, 3 demand satisfied and iTES_T raised, 4 damand satisfied and iTES_T reaches maximum, -1 unsatisfied demand, -2 unsatisfied demand and iTES under minimum -3 t_amb too cold
-            
             self.cop_story = np.full(c.timestep_number,np.nan) # coefficient of performance
             
             #### HP MODEL GU' #################################################
@@ -88,7 +80,7 @@ class heatpump:
             self.size_factor=  self.nom_Pth/ Pth_7_35 
             
         def output(self,C,Te,Tc):
-            # polynomial model
+            # Polynomial model
             Y = C[0] + C[1]*Te + C[2]*Tc + C[3]*Te**2 + C[4]*Te*Tc + C[5]*Tc**2 + C[6]*Te**3 + C[7]*Tc*Te**2 + C[8]*Te*Tc**2 + C[9]*Tc**3
             return Y
         
@@ -109,7 +101,7 @@ class heatpump:
             return cop,Pth,Pele, t_w_eff
         
         def HP_follows_thermal(self,t_amb,t_w,e_th):
-            # heatpump follows thermal demand
+            # Heatpump follows thermal demand
             
             cop,Pth,Pele,t_w_eff = self.nominal_performance(t_amb,t_w) # nominal working
             rf = e_th / Pth # regulation factor
@@ -127,21 +119,15 @@ class heatpump:
         
         def use(self,t_amb,p_th,p_ele,step):
             """
-            heat (e_th<0) or cool (e_th>0) required by radiation system to heatpump system
+            Inputs:
+                t_amb: [C°]
+                p_th: (<0) heat or (>0) cool [kW]
+                p_ele: [kW], if p_ele > 0 and PV_surplus or REC_surplus == True the HP can use the suprlus of electicity to heats the inertial_TES
 
-            Parameters
-            ----------
-            t_amb : float [C°]
-            p_th : float [kW]
-                <0 heat
-                >0 cool
-            p_ele: float [kW]
-                if e_ele > 0 and PV_surplus or REC_surplus == True the HP can use the suprlus of electicity to heats the inertial_TES
-
-            Returns
-            -------
-            electricity used (-), heat supply (+) or absorbed (-) by the HP, heat supply (+) or absorbed (-) by the inertial_TES
-
+            Outputs:
+                p_ele_hp: electricity used (<0)
+                p_th_hp: heat supplied (>0) or absorbed (<0) by the HP
+                p_th_i_TES: heat supplied (>0) or absorbed (<0) by the inertial_TES
             """
             
             # check mode
@@ -226,29 +212,27 @@ class heatpump:
                                         
         def tech_cost(self,tech_cost):
             """
-            Parameters
-            ----------
-            tech_cost : dict
-                'cost per unit': float [€/kW]
-                'OeM': float, percentage on initial investment [%]
-                'refud': dict
-                    'rate': float, percentage of initial investment which will be rimbursed [%]
-                    'years': int, years for reimbursment
-                'replacement': dict
-                    'rate': float, replacement cost as a percentage of the initial investment [%]
-                    'years': int, after how many years it will be replaced
+            Inputs:
+                tech_cost: dict
+                    'cost per unit': [€/kW]
+                    'OeM': percentage on initial investment [%]
+                    'refud': dict
+                        'rate': percentage of initial investment which will be rimbursed [%]
+                        'years': years for reimbursment
+                    'replacement': dict
+                        'rate': replacement cost as a percentage of the initial investment [%]
+                        'years': after how many years it will be replaced
     
-            Returns
-            -------
-            self.cost: dict
-                'total cost': float [€]
-                'OeM': float, percentage on initial investment [%]
-                'refud': dict
-                    'rate': float, percentage of initial investment which will be rimbursed [%]
-                    'years': int, years for reimbursment
-                'replacement': dict
-                    'rate': float, replacement cost as a percentage of the initial investment [%]
-                    'years': int, after how many years it will be replaced
+            Outputs:
+                self.cost: dict
+                    'total cost': [€]
+                    'OeM': percentage on initial investment [%]
+                    'refud': dict
+                        'rate': percentage of initial investment which will be rimbursed [%]
+                        'years': years for reimbursment
+                    'replacement': dict
+                        'rate': replacement cost as a percentage of the initial investment [%]
+                        'years': after how many years it will be replaced
             """
             tech_cost = {key: value for key, value in tech_cost.items()}
 

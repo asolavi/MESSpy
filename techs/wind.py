@@ -6,7 +6,7 @@ import os
 import sys 
 import pvlib
 import pickle    
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir))) 
 from core import constants as c
 import matplotlib.pyplot as plt
 
@@ -16,40 +16,43 @@ class wind:
         """
         Create a wind object based on the specified model
     
-        parameters : dictionary
-            'model': str type of model to be used for wind
-                    - power curve -> based on https://doi.org/10.1016/j.est.2021.103893.
-                                    If a series is given, [in kW/kWpeak], wind production data can be retrieved from https://www.renewables.ninja/.
-                                    If a series is given, only one parameter needs to be defined: 'Npower'.                                                                 
-                    - betz -> simple model based on Betz theory
-                    - detailed -> more detailed model based on
-                    Saint-Drenan, Yves-Marie, et al. 
-                    "A parametric model for wind turbine power curves incorporating environmental conditions." 
-                    Renewable Energy 157 (2020): 754-768.
-                              
-            'area': float swept area [m2] e.g. 39.6 m^2 (Aircon 10/10 kW)
-            'efficiency': float total efficiency = Betz*efficiency [-] default: 0.45 (ca. 0.593*0.76, i.e. Betz*efficiency)
-            'Npower': float rated power [kW] # NOTE: useless for 'betz' and 'detailed' methods
-            'WSrated': float rated wind speed [m/s] e.g. 11.0 m/s (Aircon 10/10 kW)
-            'WScutin': float cut in wind speed [m/s] e.g.  2.5 m/s (Aircon 10/10 kW)
-            'WScutoff': float cut off wind speed [m/s] e.g. 32.0 m/s (Aircon 10/10 kW)
-            
-            'omega_min': [rpm] OPTIONAL default = from eq.
-            'omega_max': [rpm] OPTIONAL default = from eq.
-            'beta': [°] e.g. 0°
-            'cp_max': [-] OPTIONAL default = 0.44; values from 0.4 to 0.5
-            'idx': [-] e.g. 5; values from 0 to 5
-            
-            'z_i': [m] wind turbine height
-            'z_hub': [m] hub height, e.g. 30 m (Aircon 10/10 kW)
-            'alpha': [-] Hellman or shear coefficient, values from 0 to 0.4, default 0.4
-            'Vu': [°/m] Veer coefficient, values from 0 to 0.75 °/m
-            'Nbands': [-] Number of horizontal bands
-            
-            'serie': if "TMY" production series based on typical meteorological year, or a specific year, or a custom CSV file
-            'ageing': bool, if wind turbine performance degradation must be considered
-            'degradation_factor': float, [%] of performance loss every year
-        output : wind object able to:
+        Inputs:
+            parameters: dictionary
+                'model': type of model to be used for wind
+                        - power curve -> based on https://doi.org/10.1016/j.est.2021.103893.
+                                        If a production serie is given, [in kW/kWpeak], wind production data can be retrieved from https://www.renewables.ninja/.
+                                        If a series is given, only one parameter needs to be defined: 'Npower'.                                                                 
+                        - betz -> simple model based on Betz theory
+                        - detailed -> more detailed model based on
+                        Saint-Drenan, Yves-Marie, et al. 
+                        "A parametric model for wind turbine power curves incorporating environmental conditions." 
+                        Renewable Energy 157 (2020): 754-768.
+                                  
+                'area': swept area [m2] e.g. 39.6 m^2 (Aircon 10/10 kW)
+                'efficiency': total efficiency = Betz*efficiency [-] default: 0.45 (ca. 0.593*0.76, i.e. Betz*efficiency)
+                'Npower': rated power [kW] # NOTE: useless for 'betz' and 'detailed' methods
+                'WSrated': rated wind speed [m/s] e.g. 11.0 m/s (Aircon 10/10 kW)
+                'WScutin': cut in wind speed [m/s] e.g.  2.5 m/s (Aircon 10/10 kW)
+                'WScutoff': cut off wind speed [m/s] e.g. 32.0 m/s (Aircon 10/10 kW)
+                
+                'omega_min': [rpm] OPTIONAL default = from eq.
+                'omega_max': [rpm] OPTIONAL default = from eq.
+                'beta': [°] e.g. 0°
+                'cp_max': [-] OPTIONAL default = 0.44; values from 0.4 to 0.5
+                'idx': [-] e.g. 5; values from 0 to 5
+                
+                'z_i': [m] wind turbine height
+                'z_hub': [m] hub height, e.g. 30 m (Aircon 10/10 kW)
+                'alpha': [-] Hellman or shear coefficient, values from 0 to 0.4, default 0.4
+                'Vu': [°/m] Veer coefficient, values from 0 to 0.75 °/m
+                'Nbands': [-] Number of horizontal bands
+                
+                'wind speed source': PVGIS or a csv with wind data at the right height
+                'serie': if "TMY" production series based on typical meteorological year, or a specific year, or a custom CSV file (wind data or production data)
+                'ageing': bool, if wind turbine performance degradation must be considered
+                'degradation_factor': [%] of performance loss every year
+                
+        Outputs: wind object able to:
             produce electricity .use(step)
         """
         self.parameters         = parameters                                                                                          
@@ -70,7 +73,7 @@ class wind:
             self.Npower             = self.parameters['Npower']     # [kW] wind technology nominal power
             self.z_i                = self.parameters['z_i']        # Height of the wind turbine (m)
             self.href               = 10                            # Reference height for wind speed data from PVGIS (m)
-            self.alpha              = self.parameters.get('alpha', 0.4)    # Exponent law coefficient (default to 0.14)                        
+            self.alpha              = self.parameters.get('alpha', 0.14)    # Exponent law coefficient (default to 0.14)                        
             
         if self.model == 'betz':
             self.z_i                = self.parameters['z_i']    # Height of the wind turbine (m)
@@ -106,9 +109,9 @@ class wind:
         self.longitude          = c.longitude
 
         
-        if self.parameters['serie'] == "TMY" or type(self.parameters['serie']) == int:
-            ### If wind serie has already been downloaded and saved as file.csv, this file is used
-            ### Otherwise new serie is downloaded from PVGIS
+        if self.parameters['wind speed source'] =='PVGIS' or self.parameters['wind speed source'] =='csv': 
+            ### If hourly wind data has already been downloaded and saved as file.csv, this file is used
+            ### Otherwise new wind speed data is downloaded from PVGIS or from a csv file
             
             # check = True # True if no wind parameters are changed from the old simulation
                 
@@ -121,7 +124,7 @@ class wind:
             if os.path.exists(f"{directory}/wind_{file_structure}_{location_name}.pkl"):
                 with open(f"{directory}/wind_{file_structure}_{location_name}.pkl", 'rb') as f:
                     ps_parameters = pickle.load(f)  # Load previous simulation parameters
-                    par_to_check = ['model', 'WScutin', 'WSrated', 'WScutoff', 'z_i', 'alpha', 'serie', 'area', 'efficiency', 'Nbands', 'cp_max', 'beta', 'idx', 'z_hub', 'Vu']
+                    par_to_check = ['model', 'WScutin', 'WSrated', 'WScutoff', 'z_i', 'alpha', 'wind speed source', 'serie', 'area', 'efficiency', 'Nbands', 'cp_max', 'beta', 'idx', 'z_hub', 'Vu']
                     for par in par_to_check:
                         if par in ps_parameters and par in self.parameters:  # Some parameters haven't to be defined
                             if ps_parameters[par] != self.parameters[par]:
@@ -136,29 +139,37 @@ class wind:
                 
                 if self.model == 'power curve':
                     wind_data = wind_data * self.Npower
-    
-            else:  # Download new wind data from PVGIS
-                print(f"Downloading new wind series from PVGIS for {location_name}_{file_general}_{file_structure}")
-                # Retrieve wind speed data from PVGIS based on selected 'serie'
-                if self.parameters['serie'] == "TMY":
-                    weather = pvlib.iotools.get_pvgis_tmy(self.latitude, self.longitude, map_variables=True)[0]
-                    res = pvlib.iotools.get_pvgis_hourly(self.latitude, self.longitude)
-                    wind_speed_data = res[0]['wind_speed']  # Wind speed at 10m height
-                    refindex = weather.index
-                    shift_minutes = int(str(wind_speed_data.index[0])[14:16])
-                    refindex = refindex.shift(shift_minutes,'min')
-                    wind_speed_data = wind_speed_data[refindex]
-           
-                else:  # If specific year 
-                    year = self.parameters['serie']
-                    res = pvlib.iotools.get_pvgis_hourly(self.latitude, self.longitude, start=year, end=year)
-                    wind_speed_data = res[0]['wind_speed']
+            
+            else:  
+                if self.parameters['wind speed source'] =='PVGIS':  # Download new wind data from PVGIS
+                   print(f"Downloading new wind series from PVGIS for {location_name}_{file_general}_{file_structure}")
+                   # Retrieve wind speed data from PVGIS based on selected 'serie'
+                   if self.parameters['serie'] == "TMY":
+                       weather = pvlib.iotools.get_pvgis_tmy(self.latitude, self.longitude, map_variables=True)[0]
+                       res = pvlib.iotools.get_pvgis_hourly(self.latitude, self.longitude)
+                       wind_speed_data = res[0]['wind_speed']  # Wind speed at 10m height
+                       refindex = weather.index
+                       shift_minutes = int(str(wind_speed_data.index[0])[14:16])
+                       refindex = refindex.shift(shift_minutes,'min')
+                       wind_speed_data = wind_speed_data[refindex]
+              
+                   else:  # If specific year 
+                       year = self.parameters['serie']
+                       res = pvlib.iotools.get_pvgis_hourly(self.latitude, self.longitude, start=year, end=year)
+                       wind_speed_data = res[0]['wind_speed']
 
-                # Remove 29th of february if present
-                wind_speed_data = wind_speed_data[~((wind_speed_data.index.month == 2) & (wind_speed_data.index.day == 29))]
+                   # Remove 29th of february if present
+                   wind_speed_data = wind_speed_data[~((wind_speed_data.index.month == 2) & (wind_speed_data.index.day == 29))]
+                   
+                   wind_speed_data = pd.DataFrame(wind_speed_data)
                 
-                wind_speed_data = pd.DataFrame(wind_speed_data)
-
+                if self.parameters['wind speed source'] =='csv':   # wind speed data already at the right height
+                   wind_speed_data = pd.DataFrame()
+                   wind_speed_data = pd.read_csv(f"{path}/weather/"+self.parameters['serie'])
+                   wind_speed_data['wind_speed'] = wind_speed_data['WSC'].to_numpy()
+                   wind_speed_data['datetime'] = pd.to_datetime(wind_speed_data['YEAR'].astype(str) + '-' + wind_speed_data['MO'].astype(str).str.zfill(2) + '-' + wind_speed_data['DY'].astype(str).str.zfill(2) + ' ' + wind_speed_data['HR'].astype(str).str.zfill(2) + ':00')
+                   wind_speed_data.set_index('datetime', inplace=True)
+                   
                 # Time correction (UTC, DST)
                 if c.UTC > 0:
                     wind_speed_data_index = wind_speed_data.index
@@ -200,8 +211,11 @@ class wind:
    
     
                 if self.model == 'power curve':  # https://doi.org/10.1016/j.est.2021.103893
-                    # Step 2: Correct wind speed for the turbine's height using the power law
-                    corrected_wind_speed = wind_speed_data * (self.z_i / self.href) ** self.alpha
+                    # Step 2: Correct wind speed for the turbine's height using the power law if wind speed data are from PVGIS
+                    if self.parameters['wind speed source'] =='PVGIS': 
+                       corrected_wind_speed = wind_speed_data * (self.z_i / self.href) ** self.alpha
+                    if self.parameters['wind speed source'] =='csv':
+                       corrected_wind_speed = wind_speed_data
                     # Step 3: Calculate the power output based on the corrected wind speed
                     hourly_power_output_1kW = []
                     for vw in corrected_wind_speed['wind_speed']:
@@ -304,8 +318,8 @@ class wind:
                     # Save new parameters in previous_simulation
                     with open(f"{directory}/wind_{file_structure}_{location_name}.pkl", 'wb') as f:
                         pickle.dump(self.parameters, f)
-             
-        else:
+                  
+        else: 
             # read a specific production serie expressed as kW/kWpeak
             wind_data = pd.read_csv(path+'/production/'+self.parameters['serie'])['P'].to_numpy()
             wind_data = wind_data * self.Npower                          # kWh
@@ -313,7 +327,7 @@ class wind:
             if len(self.production) != c.timestep_number:
                 raise ValueError(f"Warning! Checks the length and timestep of the wind production you input for {location_name}.")
 
-        # Aging calculation
+        # Ageing calculation
         if parameters['ageing'] == False:
             # electricity produced every hour in the reference_year [kWh] [kW]
             self.production = np.tile(wind_data,int(c.timestep_number*c.timestep/60/8760)) # from 1 year to simlation length years
@@ -331,15 +345,16 @@ class wind:
         
     def use(self,step):
         """
-        Produce electricity
+        Produce electricity.
         
-        step : int step to be simulated
-        windspeed: float wind speed [m/s]
+        Inputs:
+            step: step to be simulated
+            windspeed: wind speed [m/s]
     
-        output : float electricity produced that timestep [kW]
+        Outputs: 
+            power_output: electricity produced that timestep [kW]
     
         """
-
         power_output = self.production[step]               
         return(power_output)
 
@@ -454,29 +469,27 @@ class wind:
 
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kW]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kW]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 

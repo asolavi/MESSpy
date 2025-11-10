@@ -16,27 +16,29 @@ class electrolyzer:
         """
         Create an electrolyzer object
     
-        parameters : dictionary
-            'Npower': float nominal power [kW]
-            'number of modules': str  number of modules in the stack [-]
-            'stack model': str 'Enapter 2.1','McLyzer 800' or more detailed models like 'PEM General' and 'Alkaline'
-            'minimum_load': 0-1 float [-], minimum operational load while functioning 
-            'min power module': 0-1 float [-] minimum power input for the single module 
-            'power distribution': 'series' --> module operated in series, not equal power distribution
-                                   'parallel' --> module operated in parallel, equal power distribution                             
-            'ageing':  bool, True enables ageing effects, impacting performance over time. False ignores them
-            'strategy': str - 'full-time'. Electrolyzers operational 24/7, grid connection must be present. 
-                            - 'hydrogen-first'. Electrolyzers working only when renewable power is available, 
-                               prioritizing production of hydrogen over electricity production from RES
-           'operational_period': period of the year during which the electrolyzer is turned on or off
-           'state': str, "on" or "off", state of the electrolyzer in the operational period
-           'efficiency': float efficiency of simple model [0-1]                                            
+        Inputs:
+            parameters: dictionary
+                'Npower': nominal power [kW]
+                'number of modules': number of modules in the stack [-]
+                'stack model': 'Enapter 2.1','McLyzer 800' or more detailed models like 'PEM General' and 'Alkaline'
+                'minimum_load': 0-1 [-], minimum operational load while functioning 
+                'min power module': 0-1 [-] minimum power input for the single module 
+                'power distribution': 'series' --> module operated in series, not equal power distribution
+                                       'parallel' --> module operated in parallel, equal power distribution                             
+                'ageing':  bool, True enables ageing effects, impacting performance over time. False ignores them
+                'strategy': 'full-time'. Electrolyzers operational 24/7, grid connection must be present. 
+                            'hydrogen-first'. Electrolyzers working only when renewable power is available, 
+                                   prioritizing production of hydrogen over electricity production from RES
+                            'ammonia-production'. Electrolyzer operated to produce ammonia in the ASR
+               'operational_period': period of the year during which the electrolyzer is turned on or off
+               'state': "on" or "off", state of the electrolyzer in the operational period
+               'efficiency': efficiency of simple model [0-1]                                            
                       
-        output : electrolyzer object able to:
-            abrosrb electricity and water and produce hydrogen and oxygen .use(p)
+        Outputs: electrolyzer object able to:
+            absorb electricity and water and produce hydrogen and oxygen .use(p)
         """
 
-        self.model      = parameters['stack model']         # [-] selected electorlyzer model
+        self.model      = parameters['stack model']         # [-] selected electrolyzer model
         self.Npower     = parameters['Npower']              # [kW] float nominal power of electrolyzers installed capacity for the location
         if self.model in ['PEM General','Alkaline'] and self.Npower> 1000:
             raise ValueError(f"Warning: {self.Npower} kW of rated power has been selected for the single PEM or Alkaline electrolyser module (Detailed Models). \n\
@@ -47,7 +49,7 @@ class electrolyzer:
             raise ValueError(f"Warning: {self.Npower} kW of rated power has been selected for the Alkaline electrolyzer model.\n\
             The minimum capacity for this model is 10 kW according to the manufacturer's specifications.\nPlease select a nominal power of 10 kW or higher for the Alkaline model.")
         self.n_modules          = parameters.get('number of modules',1)       # [-] number of modules in the stack
-        self.strategy           = parameters['strategy']                # definig operational strategy for electrolyzers
+        self.strategy           = parameters['strategy']                # defining operational strategy for electrolyzers
         self.only_renewables    = parameters['only_renewables']
         self.min_load           = parameters.get('minimum_load', 0) # if 'minimum load' is not specified as model input, the default value of 0 is selected by default
         self.ageing             = parameters.get('ageing', False)   # if 'ageing' is not specified as model input, the default value is set to False 
@@ -98,10 +100,7 @@ class electrolyzer:
         else:
             raise ValueError("Warning: Invalid model selected.")
             
-                                                                                                               
-                                                                                                                                
-                                                                                                                
-        
+
         if parameters['stack model'] == 'simple':     
             
             print("Warning: Electrolyzer simple model has only a specific consumption value, it does not consider ageing and minimum load")
@@ -273,7 +272,7 @@ class electrolyzer:
             self.maxh2prod          = round(max(self.h2_prodmodulemass),8)            # [kg/s] maximum amount of produced hydrogen for the considered module
             nominal_efficieny = round(self.eta_module[-1],2)
             eta_kWh_kg = (c.LHVH2/3.6)/nominal_efficieny     # efficiency in kWh/kg
-            print(f"\nThe electrolyzer nominal efficiency of each module is found to be equal to {nominal_efficieny*100} % which is equivalent to {round(eta_kWh_kg,2)} kWh/kg (using H2 LHV)")                                                                                                                                                                                               
+            # print(f"\nThe electrolyzer nominal efficiency of each module is found to be equal to {nominal_efficieny*100} % which is equivalent to {round(eta_kWh_kg,2)} kWh/kg (using H2 LHV)")                                                                                                                                                                                               
             self.maxh2prod_stack    = self.maxh2prod*self.n_modules     # [kg/s] maximum amount of produced hydrogen for the considered stack 
           
             self.etaF       = interp1d(self.h2_prodmodulemass,etaFar,bounds_error=False,fill_value='extrapolate')       # Linear spline 1-D interpolation -> produced H2 - Faraday efficiency
@@ -523,18 +522,16 @@ class electrolyzer:
         Inverse function that computes the power consumption and Faraday efficiency
         corresponding to a required amount of produced hydrogen by means of interpolating functions.
 
-        Parameters
-        ----------
-        h2 : float hydrogen to be produced [kg/s]
+        Inputs:
+            h2: hydrogen to be produced [kg/s]
 
-        Returns
-        -------
-        hyd: float hydrogen produced [kg/s] (same as input 'h2')
-        P_absorbed : float electricity absorbed [kW]
-        etaElectr : module efficiency [-]
-        watCons : module water consumption [m^3/s]
-        CellCurrDensity1 : single cell current density [A/cm^2]
-        etaFaraday : Faraday efficiency [-]
+        Outputs:
+            hyd: hydrogen produced [kg/s] (same as input 'h2')
+            P_absorbed: electricity absorbed [kW]
+            etaElectr: module efficiency [-]
+            watCons: module water consumption [m^3/s]
+            CellCurrDensity1: single cell current density [A/cm^2]
+            etaFaraday: Faraday efficiency [-]
 
         """
         if 0 < h2 <= self.maxh2prod:
@@ -571,7 +568,7 @@ class electrolyzer:
                 CellCurrDensity1  = 0
                 
         else:      # If hydrogen is zero
-            
+
             hyd               = 0
             P_absorbed        = 0
             etaElectr         = 0
@@ -662,13 +659,13 @@ class electrolyzer:
         Ageing effects are modeled as increases in operational voltage due to both time and temperature,
         which in turn affect hydrogen production efficiency.
     
-        Parameters:
-        - step (int): Current simulation step indicating the operational time.
-        - power (float): Electrical power input to the electrolyzer [kW].
-        - Text (float | None): External temperature [°C]; defaults to a standard value if None.
+        Inputs:
+            step: Current simulation step indicating the operational time
+            power: Electrical power input to the electrolyzer [kW]
+            Text: External temperature [°C]; defaults to a standard value if None
     
-        Returns:
-        - hyd_produced (float): Adjusted hydrogen production [kg/s], accounting for ageing effects.
+        Outputs:
+            hyd_produced: Adjusted hydrogen production [kg/s], accounting for ageing effects
     
         This function updates the electrolyzer's polarization curve to reflect degradation, then uses
         this updated curve to determine the new operational parameters, including the hydrogen production rate.
@@ -900,6 +897,7 @@ class electrolyzer:
             
             return hyd_produced, elec_required, eta_electr
     
+    
     def thermal_effects (self,T_el,hydrogen,Iop,Vop,Text):
         """
         Calculates the updated temperature of the electrolyzer module considering thermal effects.
@@ -909,15 +907,15 @@ class electrolyzer:
         thermal model that considers the geometry of the electrolyzer, material properties, and operational conditions
         to estimate the heat transfer and subsequent temperature change.
           
-        Parameters:
-        - T_el [°C]: Current temperature of the electrolyzer.
-        - hydrogen [kg/s]: Amount of hydrogen being produced, which influences the thermal power generated within the electrolyzer.
-        - Iop [A]: Operating current, used to calculate the thermal power generated from electrical losses above the thermoneutral voltage.
-        - Vop [V]: Operating voltage, used in conjunction with the operating current to calculate the thermal power generated.
-        - Text [°C] (optional): External ambient temperature. If not provided, a default value is used.
+        Inputs:
+            T_el [°C]: Current temperature of the electrolyzer.
+            hydrogen [kg/s]: Amount of hydrogen being produced, which influences the thermal power generated within the electrolyzer.
+            Iop [A]: Operating current, used to calculate the thermal power generated from electrical losses above the thermoneutral voltage.
+            Vop [V]: Operating voltage, used in conjunction with the operating current to calculate the thermal power generated.
+            Text [°C] (optional): External ambient temperature. If not provided, a default value is used.
           
-        Returns:
-        - Updated temperature [°C] of the electrolyzer after accounting for the thermal effects during the operation.
+        Outputs:
+            Updated temperature [°C] of the electrolyzer after accounting for the thermal effects during the operation.
           
         Note: The function scales the electrolyzer's geometry based on the number of cells and uses material properties
         and heat transfer coefficients to estimate heat losses. It also considers the impact of insulation and adjusts
@@ -986,14 +984,14 @@ class electrolyzer:
         """
         Electorlyzers stack and single modules operational parameters
     
-        step : timestep float timestep in hours [step]
-        p : float > 0 electricity provided to the electrolyzer [kW]
-        storable_hydrogen : float storable hydrogen H tank max_capacity - SOC[h-1] [kg] or maximum absorbable production if there is no tank
+        Inputs:
+            step: timestep float timestep in hours [step]
+            p: (>0) electricity provided to the electrolyzer [kW]
+            storable_hydrogen: storable hydrogen H tank max_capacity - SOC[h-1] [kg] or maximum absorbable production if there is no tank
 
-        output : 
-            
-        hyd: float hydrogen produced [kg/s]    
-        P_absorbed: float electricity absorbed [kW]
+        Outputs:     
+            hyd: hydrogen produced [kg/s]    
+            P_absorbed: electricity absorbed [kW]
         
         """
         state = self.operational_state[step]
@@ -1009,7 +1007,7 @@ class electrolyzer:
         
         if self.power_distribution == 'series':
                                                                                     
-            if self.strategy == 'hydrogen-first' and hydrog == False:       # defined strategy is either to work only with renewable energy or to prioritize its consumption while interacting also with the electricity grid
+            if self.strategy in ['hydrogen-first','ammonia production'] and hydrog == False:       # defined strategy is either to work only with renewable energy or to prioritize its consumption while interacting also with the electricity grid
                
                 if self.model == 'simple':
                                                                                               
@@ -1127,7 +1125,7 @@ class electrolyzer:
                             self.wat_cons[step]      = watCons
 
             
-            elif self.strategy == 'hydrogen-first' and p == False:                   # if defined strategy is to work with electricity from renewables and from grid
+            elif self.strategy in ['hydrogen-first','ammonia production'] and p == False:                   # if defined strategy is to work with electricity from renewables and from grid
                 if self.model == 'simple':
                     
                     hyd = hydrog                                                                        # [kg/s]                                 
@@ -1253,7 +1251,7 @@ class electrolyzer:
         
         elif self.power_distribution == 'parallel':
                 
-            if self.strategy == 'hydrogen-first' and hydrog == False:       # defined strategy is either to work only with renewable energy or to prioritize its consumption while interacting also with the electricity grid
+            if self.strategy in ['hydrogen-first','ammonia production'] and hydrog == False:       # defined strategy is either to work only with renewable energy or to prioritize its consumption while interacting also with the electricity grid
                 
                 if self.model == 'simple':
                                                                                               
@@ -1330,7 +1328,7 @@ class electrolyzer:
                         self.n_modules_used[step] = 0
                         P_absorbed, hyd, watCons, oxygen = [0,0,0,0]          
             
-            elif self.strategy == 'hydrogen-first' and p == False:                   # if defined strategy is to work with electricity from renewables and from grid
+            elif self.strategy in ['hydrogen-first','ammonia production'] and p == False:                   # if defined strategy is to work with electricity from renewables and from grid
                
                 if self.model == 'simple':
                     
@@ -1433,18 +1431,16 @@ class electrolyzer:
         """
         This function calculates the performances of a single electrolyzer module.
         
-        Parameters
-        ----------
-        p : float > 0 electricity provided to the electrolyzer in the timestep [kW]
-        max_hyd_storable : float maximum hydrogen flow rate (H tank max_capacity - SOC[h-1])/(timestep*60) [kg/s] or maximum absorbable production if there is no tank
+        Inputs:
+            p: (>0) electricity provided to the electrolyzer in the timestep [kW]
+            max_hyd_storable : maximum hydrogen flow rate (H tank max_capacity - SOC[h-1])/(timestep*60) [kg/s] or maximum absorbable production if there is no tank
 
-        Returns
-        -------
-        hyd: float hydrogen produced [kg/s]    
-        P_absorbed: float electricity absorbed in the timestep [kW]
-        etaElectr : module efficiency [-]
-        watCons : module water consumption [m^3/s]
-        CellCurrDensity1 : single cell current density [A/cm^2]
+        Outputs:
+            hyd: hydrogen produced [kg/s]    
+            P_absorbed: electricity absorbed in the timestep [kW]
+            etaElectr: module efficiency [-]
+            watCons: module water consumption [m^3/s]
+            CellCurrDensity1: single cell current density [A/cm^2]
 
         """
         
@@ -1498,55 +1494,88 @@ class electrolyzer:
 
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kW]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kW]
+                'OeM': operation and maintenance costs, percentage on initial investment [%]
+                'refund': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of equipment cost [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': [€]
+                'refund': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of equipment cost [%]
+                    'years': after how many years it will be replaced
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 
-        size = self.Npower * self.n_modules 
+        size = self.Npower * self.n_modules
         
-        if tech_cost['cost per unit'] == 'default price correlation': # ref: https://doi.org/10.1016/j.ijhydene.2023.04.100 PEMEL cost, 2030 year of reference
-            C0 = 1185.69 # €/kW
-            scale_factor = 0.925 # 0:1
-            C =  C0*(size**scale_factor)
+        if tech_cost['cost per unit'] == 'default price correlation': 
+            # Ref: Reksten, Anita H., et al. "Projecting the future cost of PEM and alkaline water electrolysers; a CAPEX model including electrolyser plant size and technology development." international journal of hydrogen energy 47.90 (2022): 38106-38113.
+            Q = size
+            V0 = 2020
+            V = 2024  # actual year
+            if self.model == 'PEM General':
+                k0 = 585.85
+                k =  9458.2
+                alpha = 0.622
+                beta = -158.9
+            if self.model == 'Alkaline':
+                k0 = 301.04
+                k =  11603
+                alpha = 0.649
+                beta = -27.33                
+            exchange_rate = 0.95   # USD to €
+            CEPCI_2020 = 596.2
+            CEPCI_2024 = 800
+            C = (k0 + k / Q * Q**alpha) * (V/V0)**beta * size * exchange_rate    # [€], uninstalled electrolyzer system cost
+            C = C * CEPCI_2024 / CEPCI_2020
         else:
-            C = size*tech_cost['cost per unit']
+            C = size * tech_cost['cost per unit']
             
-        if tech_cost['OeM'] == 'default price correlation': # ref: https://doi.org/10.1016/j.ijhydene.2023.04.100, 2030 year of reference
-            C0 = 349.8 # €/kW
-            scale_factor = -0.305
-            OeM = (C0*(size**scale_factor))*size
-        else:
-            OeM = tech_cost['OeM'] *C /100 # €
         if tech_cost['replacement']['years'] == "ageing":
             tech_cost['replacement']['years'] = self.replacement                                                     
 
         tech_cost['total cost'] = tech_cost.pop('cost per unit')
         tech_cost['total cost'] = C
-        tech_cost['OeM'] = OeM
+        tech_cost['OeM'] = tech_cost['OeM'] *C /100 # [€]
 
-        self.cost = tech_cost    
+        self.cost = tech_cost 
+        
+        # plant_size = np.linspace(1000, 150000, 1000)
+        # cost = np.zeros(len(plant_size))
+        # specific_cost = np.zeros(len(plant_size))
+        # i = 0
+        # for ps in plant_size:
+        #     cost[i] = (k0 + k / ps * ps**alpha) * (V/V0)**beta * ps * exchange_rate * CEPCI_2024 / CEPCI_2020
+        #     specific_cost[i] = cost[i] / ps
+        #     i +=1
+        # fig, ax1 = plt.subplots(figsize=(8, 5), dpi=150)
+        # ax1.set_xlabel('Plant size [MW]', fontsize=12)
+        # ax1.set_ylabel('Cost [M€]', fontsize=12)
+        # ax1.set_ylim(0, 100)
+        # ax1.set_xlim(0, 150)
+        # line1, = ax1.plot(plant_size/1000, cost / 1e6, color='#06c2ac', linewidth=2, label='Cost')
+        # ax1.grid()
+        # ax2 = ax1.twinx()
+        # ax2.set_ylabel('Cost per unit [€/kW]', fontsize=12)
+        # line2, = ax2.plot(plant_size/1000, specific_cost, color='lightcoral', linewidth=2, label='Cost per unit')
+        # ax2.set_ylim(600, 1200)
+        # plt.title('Electrolyzer cost')
+        # lines = [line1, line2]
+        # labels = [line.get_label() for line in lines]
+        # ax1.legend(lines, labels, loc="upper center")
+        # plt.show()
 
 ##########################################################################################
 
@@ -1556,29 +1585,38 @@ if __name__ == "__main__":
     Functional test
     """
     inp_test = {  
-                  "Npower": 100,
-                  "number of modules": 10,
-                  "stack model": 'Alkaline',
+                  "Npower": 1000,
+                  "number of modules": 1,
+                  "stack model": 'PEM General',
                   "efficiency": False,
                   "minimum_load": False,
-                  "min power module": 0.1,
+                  "min power module": 0.05,
                   "ageing": False,
                   "strategy": 'hydrogen-first',
                   "only_renewables":True,
-                  "power distribution": "parallel",
+                  "power distribution": "series",
   	              "operational_period": "01-01,31-12",
           	      "state"             : "on"  }
     
+    tech_cost = {"cost per unit":"default price correlation", 
+                     "OeM": 3, 
+                     "other costs" : 80,
+                     "refund": { "rate": 0, "years": 0},
+                     "replacement": {"rate": 30, "years": 10}}
+    
     sim_steps = 8760           # [step] simulated period of time - usually it's 1 year minimum
     timestep = 60              # [min] selected timestep
-    storable_hydrogen = 10000                      # [kg] Available capacity in tank for H2 storage at timestep 'step'
+    storable_hydrogen = 1000000000000                      # [kg] Available capacity in tank for H2 storage at timestep 'step'
 
     el = electrolyzer(inp_test,sim_steps,timestep=timestep)        # creating electrolyzer object
-    el.plot_polarizationpts()                    # plot example
+    _, p_absorbed, _, _ = el.use(2,storable_hydrogen=storable_hydrogen,p=2000)
+    el.tech_cost(tech_cost)
+    
+    # el.plot_polarizationpts()                    # plot example
     
     'Test 1 - Tailored ascending power input'
 
-    flow  = np.linspace(0,el.Npower,sim_steps)  # [kW] power input - ascending series
+    flow  = np.linspace(0,el.Npower*el.n_modules,sim_steps)  # [kW] power input - ascending series
     # flow1 = np.linspace(0,el.Npower,sim_steps)  # [kW] power input - ascending series
 
     hyd         = np.zeros(len(flow))           # [kg] produced hydrogen
@@ -1591,20 +1629,20 @@ if __name__ == "__main__":
                                                  
     
     if inp_test['stack model'] != 'simple':
-        fig, ax = plt.subplots(dpi=600)
-        ax.plot(-p_absorbed,el.n_modules_used,color='tab:green',zorder=3)
-        ax.set_xlabel('Absorbed Power [kW]')
-        ax.set_ylabel('Active electrolyzer modules [-]')
-        ax.grid()
-        ax.set_title('Electrolyzer Stack - Absorbed Power')     
+        # fig, ax = plt.subplots(dpi=600)
+        # ax.plot(-p_absorbed,el.n_modules_used,color='tab:green',zorder=3)
+        # ax.set_xlabel('Absorbed Power [kW]')
+        # ax.set_ylabel('Active electrolyzer modules [-]')
+        # ax.grid()
+        # ax.set_title('Electrolyzer Stack - Absorbed Power')     
 
-        fig, ax = plt.subplots(dpi=600)
-        ax.plot(flow,el.n_modules_used,color='indianred',zorder=3)
-        ax.set_xlabel('Input Power [kW]')
-        ax.set_ylabel('Active electrolyzer modules [-]')
+        # fig, ax = plt.subplots(dpi=600)
+        # ax.plot(flow,el.n_modules_used,color='indianred',zorder=3)
+        # ax.set_xlabel('Input Power [kW]')
+        # ax.set_ylabel('Active electrolyzer modules [-]')
                                                                                                      
-        ax.grid()
-        ax.set_title('Electrolyzer Stack - Input Power')
+        # ax.grid()
+        # ax.set_title('Electrolyzer Stack - Input Power')
  
         # print('Produced Hydrogen in the timestep [kg]: \n\n',hyd)
         # print('\nAbsorbed power [kWh]: \n\n',p_absorbed)     
@@ -1652,13 +1690,14 @@ if __name__ == "__main__":
                 first_component = i
                 break
             
-        fig, ax = plt.subplots(dpi =300, figsize = (5,3.5))
+        fig, ax = plt.subplots(dpi =150, figsize = (8, 5))
         ax2 = ax.twinx()
-        ax.plot(el.Power_inp[first_component:-1],el.eta_module[first_component:-1],label='Efficiency', color = '#eb4034')
-        ax2.plot(el.Power_inp[first_component:-1],el.h2_prodmodulemass[first_component:-1],label='H2$_\mathregular{prod}$', color ='#4ea3f2')
+        ax.plot(el.Power_inp[first_component:-1],el.eta_module[first_component:-1],label='Efficiency', color = 'lightcoral', linewidth = 2.2)
+        ax2.plot(el.Power_inp[first_component:-1],el.h2_prodmodulemass[first_component:-1],label='H$_{2}$', color ='darkturquoise', linewidth = 2.2)
         plt.axvline(x=min_load*inp_test['Npower'],color='black',linestyle='--',zorder = 3)
         ax.set_xlabel('Power input [kW]')
         ax.set_ylabel('$\\eta$ [-]')
+        ax.set_title("Electrolyzer module efficiency")
         ax.set_ylim(0,None)
         ax2.set_ylim(0,None)    
         ax2.set_ylabel('Produced hydrogen [kg/s]')
@@ -1667,115 +1706,115 @@ if __name__ == "__main__":
         h2, l2 = ax2.get_legend_handles_labels()
         ax2.legend(h1+h2, l1+l2, loc='best', fontsize = 'small')
             
-        'Test 2 - Random power input'
+    #     'Test 2 - Random power input'
     
-        flow = np.random.uniform(0.08*el.Npower,5.2*el.Npower,sim_steps)   # [kWh] randomic power input as example
+    #     flow = np.random.uniform(0.08*el.Npower,5.2*el.Npower,sim_steps)   # [kWh] randomic power input as example
         
-        hyd          = np.zeros(len(flow))          # [kg] produced hydrogen
-        p_absorbed    = np.zeros(len(flow))          # [kW] absorbed hydrogen
-        oxygen       = np.zeros(len(flow))          # [kg] produced oxygen
-        water        = np.zeros(len(flow))          # [m3] consumed water
+    #     hyd          = np.zeros(len(flow))          # [kg] produced hydrogen
+    #     p_absorbed    = np.zeros(len(flow))          # [kW] absorbed hydrogen
+    #     oxygen       = np.zeros(len(flow))          # [kg] produced oxygen
+    #     water        = np.zeros(len(flow))          # [m3] consumed water
         
-        for i in range(len(flow)):
+    #     for i in range(len(flow)):
             
-            hyd[i],p_absorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen=storable_hydrogen,p=flow[i])
+    #         hyd[i],p_absorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen=storable_hydrogen,p=flow[i])
             
-        fig, ax = plt.subplots(dpi=1000)
-        ax2 = ax.twinx() 
-        ax.bar(np.arange(sim_steps)-0.2,el.EFF,width=0.35,zorder=3,edgecolor='k',label='$1^{st}$ module efficiency', alpha =0.8)
-        ax.bar(np.arange(sim_steps)+0.,el.EFF_last_module,width=0.35,zorder=3, edgecolor = 'k',align='edge',label='Last module efficiency',alpha =0.8)
-        ax2.scatter(np.arange(sim_steps),flow,color ='limegreen',s=25,edgecolors='k',label='Available Power')
-        ax.set_ylim(None,0.8)
-        h1, l1 = ax.get_legend_handles_labels()
-        h2, l2 = ax2.get_legend_handles_labels()
-        ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
-        ax.set_xlabel('Time [step]')
-        ax.set_ylabel('Efficiency [-]')
-        ax2.set_ylabel('Power Input [kW]')
-        ax.grid()
-        ax.set_title('Electrolyzer Stack functioning behaviour')
+    #     fig, ax = plt.subplots(dpi=1000)
+    #     ax2 = ax.twinx() 
+    #     ax.bar(np.arange(sim_steps)-0.2,el.EFF,width=0.35,zorder=3,edgecolor='k',label='$1^{st}$ module efficiency', alpha =0.8)
+    #     ax.bar(np.arange(sim_steps)+0.,el.EFF_last_module,width=0.35,zorder=3, edgecolor = 'k',align='edge',label='Last module efficiency',alpha =0.8)
+    #     ax2.scatter(np.arange(sim_steps),flow,color ='limegreen',s=25,edgecolors='k',label='Available Power')
+    #     ax.set_ylim(None,0.8)
+    #     h1, l1 = ax.get_legend_handles_labels()
+    #     h2, l2 = ax2.get_legend_handles_labels()
+    #     ax.legend(h1+h2, l1+l2, loc='lower center',bbox_to_anchor=(0.5, 1.08), ncol =3, fontsize ='small')
+    #     ax.set_xlabel('Time [step]')
+    #     ax.set_ylabel('Efficiency [-]')
+    #     ax2.set_ylabel('Power Input [kW]')
+    #     ax.grid()
+    #     ax.set_title('Electrolyzer Stack functioning behaviour')
         
-    else:
+    # else:
         
-        fig, ax = plt.subplots(dpi =300, figsize = (5,3.5))
-        ax.plot(flow,hyd,label='H2$_\mathregular{prod}$', color ='#4ea3f2')
-        ax.set_xlabel('Power input [kW]')
-        ax.set_ylim(0,None)    
-        ax.set_ylabel('Produced hydrogen [kg/s]')
-        ax.grid(alpha = 0.5)
-        h1, l1 = ax.get_legend_handles_labels()
+    #     fig, ax = plt.subplots(dpi =300, figsize = (5,3.5))
+    #     ax.plot(flow,hyd,label='H2$_\mathregular{prod}$', color ='#4ea3f2')
+    #     ax.set_xlabel('Power input [kW]')
+    #     ax.set_ylim(0,None)    
+    #     ax.set_ylabel('Produced hydrogen [kg/s]')
+    #     ax.grid(alpha = 0.5)
+    #     h1, l1 = ax.get_legend_handles_labels()
                                             
-        ax.legend(h1, l1, loc='best', fontsize = 'small')
+    #     ax.legend(h1, l1, loc='best', fontsize = 'small')
                                 
                                    
                                      
 #%%
-    """
-    Evaluation of ageing effects - test
-    """
-    if el.model == 'Alkaline':
+#     """
+#     Evaluation of ageing effects - test
+#     """
+#     if el.model == 'Alkaline':
         
-        inp_test["ageing"] = True
+#         inp_test["ageing"] = True
         
-        sim_steps = 8760*5              # [step] simulated period of time - usually it's 1 year minimum
-        timestep = 60                   # [min] selected timestep
+#         sim_steps = 8760*5              # [step] simulated period of time - usually it's 1 year minimum
+#         timestep = 60                   # [min] selected timestep
         
-        el = electrolyzer(inp_test,sim_steps,timestep=timestep)        # creating electrolyzer object
+#         el = electrolyzer(inp_test,sim_steps,timestep=timestep)        # creating electrolyzer object
         
-        # Temperature array to test temperature variation effect 
-        timestep_day        = (60*24)/timestep     # [-] number of timesteps in one day
-        daily_fluctuations  = np.sin(np.linspace(0, 2*np.pi, int(timestep_day)))
-        temp_min            = -5 # [°C]
-        temp_max            = 30 # [°C]
-        daily_fluctuations  = ((daily_fluctuations+1)/2)*(temp_max-temp_min)+temp_min
-        ext_temp            = np.tile(daily_fluctuations,int(sim_steps/timestep_day))
-        random_variation    = np.random.uniform(-2.5,2.5,size=ext_temp.shape)
-        ext_tempv           = ext_temp + random_variation # [°C] ambient temperature array to be fed to the electorlyzer model
+#         # Temperature array to test temperature variation effect 
+#         timestep_day        = (60*24)/timestep     # [-] number of timesteps in one day
+#         daily_fluctuations  = np.sin(np.linspace(0, 2*np.pi, int(timestep_day)))
+#         temp_min            = -5 # [°C]
+#         temp_max            = 30 # [°C]
+#         daily_fluctuations  = ((daily_fluctuations+1)/2)*(temp_max-temp_min)+temp_min
+#         ext_temp            = np.tile(daily_fluctuations,int(sim_steps/timestep_day))
+#         random_variation    = np.random.uniform(-2.5,2.5,size=ext_temp.shape)
+#         ext_tempv           = ext_temp + random_variation # [°C] ambient temperature array to be fed to the electorlyzer model
         
-        flow = np.random.uniform(0.08*el.Npower,1.2*el.Npower,sim_steps)   # [kW] randomic power input as example
+#         flow = np.random.uniform(0.08*el.Npower,1.2*el.Npower,sim_steps)   # [kW] randomic power input as example
 
-        hyd          = np.zeros(len(flow))          # [kg] produced hydrogen
-        p_absorbed    = np.zeros(len(flow))          # [kW] absorbed hydrogen
-        oxygen       = np.zeros(len(flow))          # [kg] produced oxygen
-        water        = np.zeros(len(flow))          # [m3] consumed water
+#         hyd          = np.zeros(len(flow))          # [kg] produced hydrogen
+#         p_absorbed    = np.zeros(len(flow))          # [kW] absorbed hydrogen
+#         oxygen       = np.zeros(len(flow))          # [kg] produced oxygen
+#         water        = np.zeros(len(flow))          # [m3] consumed water
         
-        for i in range(len(flow)):
-            hyd[i],p_absorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen=storable_hydrogen,p=flow[i],Text=ext_tempv[i])
+#         for i in range(len(flow)):
+#             hyd[i],p_absorbed[i],oxygen[i],water[i] = el.use(i,storable_hydrogen=storable_hydrogen,p=flow[i],Text=ext_tempv[i])
              
-#%%
-        'Polarization Curve History'
-        fig, ax = plt.subplots(dpi=1000) 
+# #%%
+#         'Polarization Curve History'
+#         fig, ax = plt.subplots(dpi=1000) 
         
-        for index,item in enumerate(el.stack[0]['Pol_curve_history']):
-            ax.plot(el.CellCurrDensity_Acm2,item,label=f'{index}')
+#         for index,item in enumerate(el.stack[0]['Pol_curve_history']):
+#             ax.plot(el.CellCurrDensity_Acm2,item,label=f'{index}')
         
-        ax.legend(title='Year',fontsize='small')
-        ax.set_xlabel('Current density [A/cm$^{2}$]')
-        ax.set_ylabel('Stack Voltage [V]')
-        # ax.set_ylim(135.10,135.3)
-        ax.grid(alpha=0.5,zorder=-1)    
-        plt.show()
+#         ax.legend(title='Year',fontsize='small')
+#         ax.set_xlabel('Current density [A/cm$^{2}$]')
+#         ax.set_ylabel('Stack Voltage [V]')
+#         # ax.set_ylim(135.10,135.3)
+#         ax.grid(alpha=0.5,zorder=-1)    
+#         plt.show()
         
-        'Efficiency History'
-        fig, ax = plt.subplots(dpi=1000) 
+#         'Efficiency History'
+#         fig, ax = plt.subplots(dpi=1000) 
         
-        for index,item in enumerate(el.stack[0]['Module_efficiency[-]']):
-            ax.plot(el.CellCurrDensity_Acm2,item,label=f'{index}')
+#         for index,item in enumerate(el.stack[0]['Module_efficiency[-]']):
+#             ax.plot(el.CellCurrDensity_Acm2,item,label=f'{index}')
         
-        ax.legend(title='Year',fontsize='small')
-        ax.set_xlabel('Current density [A/cm$^{2}$]')
-        ax.set_ylabel('Module efficiency [-]')
-        ax.grid(alpha=0.5,zorder=-1)    
-        plt.show()
+#         ax.legend(title='Year',fontsize='small')
+#         ax.set_xlabel('Current density [A/cm$^{2}$]')
+#         ax.set_ylabel('Module efficiency [-]')
+#         ax.grid(alpha=0.5,zorder=-1)    
+#         plt.show()
         
-        'Conversion Factor Update'
-        fig, ax = plt.subplots(dpi=1000)     
-        ax.scatter(np.arange(sim_steps),el.stack[0]['Conversion_factor_op[kg/MWh]'], s=0.1, label='operational')
-        ax.scatter(np.arange(sim_steps),el.stack[0]['Conversion_factor_rated[kg/MWh]'], s=0.1, label='rated')
-        # ax.plot(np.arange(sim_steps),el.stack['Conversion_factor_rated[kg/MWh]'], linewidth=0.1, label='rated')
-        # ax.plot(np.arange(sim_steps),el.stack['Conversion_factor_op[kg/MWh]'], linewidth=0.05, label='operational')
-        ax.legend()
-        ax.set_ylabel('Σ [kg/MWh]')
-        ax.set_xlabel('Time [step]')
-        ax.grid(alpha=0.5,zorder=-10)    
-        plt.show()
+#         'Conversion Factor Update'
+#         fig, ax = plt.subplots(dpi=1000)     
+#         ax.scatter(np.arange(sim_steps),el.stack[0]['Conversion_factor_op[kg/MWh]'], s=0.1, label='operational')
+#         ax.scatter(np.arange(sim_steps),el.stack[0]['Conversion_factor_rated[kg/MWh]'], s=0.1, label='rated')
+#         # ax.plot(np.arange(sim_steps),el.stack['Conversion_factor_rated[kg/MWh]'], linewidth=0.1, label='rated')
+#         # ax.plot(np.arange(sim_steps),el.stack['Conversion_factor_op[kg/MWh]'], linewidth=0.05, label='operational')
+#         ax.legend()
+#         ax.set_ylabel('Σ [kg/MWh]')
+#         ax.set_xlabel('Time [step]')
+#         ax.grid(alpha=0.5,zorder=-10)    
+#         plt.show()

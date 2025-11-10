@@ -7,7 +7,7 @@ from sklearn.linear_model import LinearRegression
 import pandas as pd
 import os
 import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   
 from core import constants as c
 import scipy.fft
 import scipy.optimize
@@ -19,21 +19,24 @@ class fuel_cell:
         """
         Create a Fuel Cell object
     
-        parameters : dictionary
-            'Npower': float nominal power [kW]
-            "number of modules": str  number of modules in the stack [-]
-            'min power module': 0-1 float [%], if specified, minimum load the fuel cell must operate at
-            'stack model': str 'simple','PEM General' and 'SOFC' are aviable
-            'priority': int technology assigned priority
-            'ageing': bool true if aging has to be calculated
-            'operational period': period of the year during which the fuel cell is turned on or off
-            'electric efficiency': float efficiency of simple model [0-1]
-            'thermal efficiency': float efficiency of simple model [0-1]                                
+        Inputs:
+            parameters: dictionary
+                'Npower': nominal power [kW]
+                'number of modules': number of modules in the stack [-].  
+                                    If set to 'automatic dimensioning', the list of technologies that the fuel cell must supply with electricity is provided 
+                                    within 'automatic dimensioning', and the number of modules is computed based on this list from location.py (e.g., ["automatic dimensioning", "electricity demand", "ASR", "PSA", "cracker"])
+                'min power module': 0-1 [-], if specified, minimum load the fuel cell must operate at
+                'stack model': 'simple','PEM General' and 'SOFC' are aviable
+                'priority': technology assigned priority
+                'ageing': bool true if aging has to be calculated
+                'operational period': period of the year during which the fuel cell is turned on or off
+                'electric efficiency': efficiency of simple model [0-1]
+                'thermal efficiency': efficiency of simple model [0-1]                                
             
-        timestep_number : int number of timesteps considered in the simulation
+        timestep_number: number of timesteps considered in the simulation
                       
-        output : Fuel cell object able to:
-            absosrb hydrogen and produce electricity, heat, and water .use(e)
+        Outputs: Fuel cell object able to:
+            absorb hydrogen and produce electricity, heat, and water .use(step,p,available_hyd)
         """
         
         self.model              = parameters['stack model'] # [-]  Fuel cell model
@@ -809,11 +812,17 @@ class fuel_cell:
         """
         The fuel cell can absorb hydrogen and produce electricity: H2 --> 2H+ + 2e
         
-        step: int step to be simulated
-        p: float < 0 power required from the system [kW]
-        available_hyd: float available hydrogen in the system at the considered step [kg]
+        Inputs:
+            step: step to be simulated
+            p: (<0) power required from the system [kW]
+            available_hyd: available hydrogen in the system at the considered step [kg]
       
-        output : hydrogen consumption [kg/s], electricity [kW] and heat supplied[kW] in the cosideterd step
+        Outputs: 
+            hyd: hydrogen consumption [kg/s]
+            power: electricity [kW] 
+            FC_Heat: heat supplied [kW] 
+            etaFC: fuel cell efficiency [-]
+            water: water production [Sm3/s]
         """
         available_hydrogen = available_hyd/(self.timestep*60) # [kg] to [kg/s] conversion for available hydrogen at the considered step
         state = self.operational_state[step]
@@ -832,11 +841,7 @@ class fuel_cell:
             FC_hyd = power / self.h2p_el_eff_in            # [kW] hydrogen power input
             hyd = power/(self.h2p_el_eff_in*c.HHVH2*1000)    # [kg/s] amount of needed hydrogen for the given input power
             FC_Heat = FC_hyd * self.h2p_th_eff_in           # [kW] thermal power output
-                                                                 
-                                                                                                   
-                                                                                                                                                                  
-                                                                                            
-                                                                                                                                                 
+                                                                                                                                                                                                                                                                                         
             water = (hyd*(self.h2oMolMass/self.H2MolMass))/self.rhoStdh2o       # [Sm3/s] stoichiometric water production
            
             etaFC = self.h2p_el_eff_in
@@ -885,7 +890,10 @@ class fuel_cell:
             
             elif abs(p) > self.Npower:                                                        # if Electric Power required is higher than nominal one, i.e., more modules can be used
                 required_full_modules   = min(self.n_modules,int(abs(p)/self.Npower))                 # number of required modules working at full load
-                full_modules            = min(required_full_modules,int(available_hydrogen/self.max_h2_module))  # number of modules operating full load based on the amount of hydrogen available   
+                if available_hydrogen == float('inf'):
+                    full_modules = required_full_modules
+                else:
+                    full_modules            = min(required_full_modules,int(available_hydrogen/self.max_h2_module))  # number of modules operating full load based on the amount of hydrogen available   
                 hyd,power,FC_Heat,etaFC_full,water = np.array(fuel_cell.use1(self,step,-self.Npower,available_hydrogen))
                 
                 hyd_full        = hyd*full_modules
@@ -917,19 +925,24 @@ class fuel_cell:
                 water   = water_full + water_singlemodule       # [m^3/s] produced water
                 
         return (hyd,power,FC_Heat,etaFC,water)  # return hydrogen absorbed [kg/s] electricity required [kW] and heat [kW] and water [Sm3] as a co-products 
-        
-                
+                 
     def use1(self,step,p,available_hydrogen):
          
         'Finding the working point of the FuelCell by explicitly solving the system:'
         """
         Single module operation. Fuel cell module that can absorb hydrogen and produce electricity: H2 --> 2H+ + 2e
         
-        step: int step to be simulated
-        p: float < 0 power required from the system [kW]
-        available_hydrogen: float available hydrogen in the system at the considered step [kg/s]
+        Inputs:
+            step: step to be simulated
+            p: (<0) power required from the system [kW]
+            available_hydrogen: available hydrogen in the system at the considered step [kg/s]
       
-        output : hydrogen absorbed [kg/s], produced electricity [kW] and heat supplied [kW] in the cosideterd step
+        Outputs:
+            hyd: hydrogen consumption [kg/s]
+            power: electricity [kW] 
+            FC_Heat: heat supplied [kW] 
+            etaFC: fuel cell efficiency [-]
+            water: water production [Sm3/s]
         """
         if self.model == 'PEM General':
             p_required = -p                                             # [kW] 
@@ -997,16 +1010,14 @@ class fuel_cell:
         """
         Inverse function that computes fuel cell efficiency, electric power output and thermal power output based on hydrogen consumption
 
-        Parameters
-        ----------
-        hyd : float exploitable hydrogen to produce electricity in the timestep [kg/s]
+        Inputs:
+            hyd: exploitable hydrogen to produce electricity in the timestep [kg/s]
 
-        Returns
-        -------
-        hyd: float exploited hydrogen in the timestep [kg/s] (same as input 'h2')
-        p_required : float electricity produced in the timestep [kW]
-        FC_Heat : Heat produced by Fuel cell operation in the time step [kW]
-        etaFC : module efficiency [-]
+        Outputs
+            hyd: exploited hydrogen in the timestep [kg/s] (same as input 'h2')
+            p_required : electricity produced in the timestep [kW]
+            FC_Heat : Heat produced by Fuel cell operation in the time step [kW]
+            etaFC : module efficiency [-]
 
         """
         if 0 <= hyd <= self.max_h2_module:     # if lower than maximum consumption capacity
@@ -1037,22 +1048,21 @@ class fuel_cell:
             
         return(hyd,p_required,FC_Heat,etaFC,water)
 
-     
     def ageing(self,step,power):
         """
         Computes the ageing effects on a fuel cell, adjusting performance by modeling voltage increases 
         due to operational time and temperature changes, which in turn impact hydrogen production efficiency.
     
-        Parameters:
-            step (int): Current simulation step indicating operational time
-            power (float): Electrical power output to be provided by the fuel cell [kW]
+        Inputs:
+            step: Current simulation step indicating operational time
+            power: Electrical power output to be provided by the fuel cell [kW]
     
-        Returns:
-            hyd_consumed (float): Adjusted hydrogen production rate in kg/s, accounting for ageing effects
-            power (float): The output power provided based on funciton calculations, reflecting the operational status of the fuel cell
-            P_th (float): Thermal power output in kW, adjusted for ageing
-            eta (float): Efficiency of the fuel cell, adjusted for the impact of ageing
-            water (float): Amount of water produced in standard cubic meters per second, adjusted for ageing
+        Outputs:
+            hyd_consumed: Adjusted hydrogen production rate in kg/s, accounting for ageing effects
+            power: The output power provided based on funciton calculations, reflecting the operational status of the fuel cell
+            P_th: Thermal power output in kW, adjusted for ageing
+            eta: Efficiency of the fuel cell, adjusted for the impact of ageing
+            water: Amount of water produced in standard cubic meters per second, adjusted for ageing
         
         This function updates the fuel cell's polarization curve to reflect degradation and utilizes this curve 
         to determine new operational parameters, including hydrogen production rate. It also performs degradation 
@@ -1335,29 +1345,27 @@ class fuel_cell:
     
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kW]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kW]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 

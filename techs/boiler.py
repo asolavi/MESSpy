@@ -8,8 +8,7 @@ Created on Fri Apr  1 15:46:34 2022
 import numpy as np
 import os
 import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
-
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   
 from core import constants as c
 
 class boiler: 
@@ -17,12 +16,14 @@ class boiler:
         """
         Create a general boiler object, serving as the parent class for different specific boiler models.
     
-        parameters : dictionary
-            'Ppeak': float peak thermal power [kWp] 
-            'efficiency': float boiler efficiency [-]
+        Inputs:
+            parameters : dictionary
+                'Ppeak': peak thermal power [kWp] 
+                'efficiency': boiler efficiency [-]
+            timestep: simulation timestep
             
 
-        outputs : boiler object able to:
+        Outputs: boiler object able to:
             consume fuel or electricity and produce heat .use(demand,timestep)
         """
         
@@ -36,29 +37,27 @@ class boiler:
         
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kW]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kW]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         
         tech_cost = {key: value for key, value in tech_cost.items()}
@@ -86,11 +85,12 @@ class boiler_el(boiler):
         """
         Create an electric boiler object 
     
-        parameters : dictionary
-            'Ppeak': float peak thermal power [kWp] 
-            'efficiency': float boiler efficiency [-]
+        Inputs:
+            parameters: dictionary
+                'Ppeak': peak thermal power [kWp] 
+                'efficiency': boiler efficiency [-]
             
-        outputs : boiler object able to:
+        Outputs : boiler object able to:
             consume electricity and produce heat .use(timestep,demand)
         """
         super().__init__(parameters)
@@ -99,13 +99,13 @@ class boiler_el(boiler):
         """
         Computes electricity consumption and heat produced
         
-        inputs :
-            considered timestep []
-            float energy demand in the considered timestep [kW]
+        Inputs:
+            step: considered timestep []
+            demand: energy demand in the considered timestep [kW]
             
-        outputs : 
-            consumption : float energy consumption [kW]
-            heatprod    : float heat produced [kW] 
+        Outputs: 
+            consumption: energy consumption [kW]
+            heatprod: heat produced [kW] 
         """
         
         if demand < 0:  # [kW] heat required
@@ -125,11 +125,12 @@ class boiler_ng(boiler):
         """
         Create a natual gas fuelled boiler object 
     
-        parameters : dictionary
-            'Ppeak': float peak thermal power [kWp] 
-            'efficiency': float boiler efficiency [-]
+        Inputs:
+            parameters: dictionary
+                'Ppeak': peak thermal power [kWp] 
+                'efficiency': boiler efficiency [-]
 
-        outputs : boiler object able to:
+        Outputs : boiler object able to:
             consume natural gas and produce heat .use(timestep,demand)
         """
         super().__init__(parameters)
@@ -140,13 +141,13 @@ class boiler_ng(boiler):
         """
         Compute natural gas consumption and heat produced
         
-        inputs :
-            considered timestep []
-            demand float energy demand in timestep [kW] (-)
+        Inputs:
+            step: considered timestep []
+            demand: energy demand in timestep [kW] (-)
             
-        outputs : 
-            consumption : float natural gas consumption [Sm3/s]
-            heatprod    : float heat produced [kW] 
+        Outputs: 
+            consumption: natural gas consumption [Sm3/s]
+            heatprod: heat produced [kW] 
         """
 
         if demand < 0:  # [kW] heat required
@@ -166,11 +167,12 @@ class boiler_h2(boiler):
         """
         Create an hydrogen-fuelled boiler object  
     
-        parameters : dictionary
-            'Ppeak'     : float peak thermal power [kWp] 
-            'efficiency': float boiler efficiency [-]
+        Inputs:
+            parameters: dictionary
+                'Ppeak': peak thermal power [kWp] 
+                'efficiency': boiler efficiency [-]
             
-        outputs : boiler object able to:
+        Outputs: boiler object able to:
             consume hydrogen and produce heat .use(timestep,demand)
         """
         super().__init__(parameters)
@@ -180,13 +182,13 @@ class boiler_h2(boiler):
         """
         Compute consumption and heat produced
         
-        inputs :
-            considered timestep []
-            demand float energy demand in timestep [kW] (-)
+        Inputs:
+            step: considered timestep []
+            demand: energy demand in timestep [kW] (-)
             
-        outputs : 
-            consumption : float hydrogen consumption [kg/s]
-            heatprod    : float heat produced [kW]    
+        Outputs: 
+            consumption: hydrogen consumption [kg/s]
+            heatprod: heat produced [kW]    
         """
 
         max_available_hyd = available_hyd/(self.timestep*60) # [kg/s] available hydrogne mass flow 

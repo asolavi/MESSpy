@@ -14,3 +14,8 @@ from .chp import Absorber
 from .mhhc_compressor import mhhc_compressor
 from .compressor import Compressor
 from .steam_methane_reformer import SMR
+from .psa import PSA
+from .ASR import ASR
+from .cracker import cracker
+from .ammoniatank import NH3_tank
+from .CCGT import CCGT

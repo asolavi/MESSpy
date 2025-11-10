@@ -2,6 +2,9 @@
 MESSpy - preprocessing
 
 """
+from core import constants as c
+from CoolProp.CoolProp import PropsSI
+import math
 
 def change_peakP(structure,location_name,peakP):
     structure[location_name]['PV']['peakP'] = peakP
@@ -11,12 +14,35 @@ def change_peakW(structure,location_name,peakW):
     structure[location_name]['wind']['Npower'] = peakW
     return(structure)
 
+def change_batterysize(structure,location_name,batterysize):
+    structure[location_name]['battery']['nominal capacity'] = batterysize
+    return(structure)
+
 def change_Elesize(structure,location_name,elesize):
     structure[location_name]['electrolyzer']['number of modules'] = elesize
     return(structure)
 
 def change_Htanksize(structure,location_name,tanksize):
     structure[location_name]['H tank']['max capacity'] = tanksize
+    return(structure)
+
+def change_NH3tanksize(structure,location_name,tanksize):
+    structure[location_name]['NH3 tank']['max capacity'] = tanksize
+    return(structure)
+
+def change_ASRsize(structure,location_name,ASRsize):
+    structure[location_name]['ASR']['max_prod'] = ASRsize
+    return(structure)
+
+def change_PSAsize(structure,location_name):
+    nitro = structure[location_name]['ASR']['max_prod'] * c.N2MOLMASS / (2*c.NH3MOLMASS)   # [kg/s]
+    nitro_unit = structure[location_name]['PSA']['Nflowrate'] / 3600 * PropsSI('D', 'T', 273.15, 'P', 101325, 'N2')  # [kg/s]
+    PSAsize = math.ceil(nitro / nitro_unit)
+    structure[location_name]['PSA']['number of units'] = PSAsize
+    return(structure)
+
+def change_CCGTsize(structure,location_name,CCGTsize):
+    structure[location_name]['CCGT']['Npower'] = CCGTsize
     return(structure)
 
 def change_electricityprice(energy_market,electricity_price):

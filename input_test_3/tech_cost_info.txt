@@ -1,4 +1,4 @@
-"cost per unit": float [€/kW] (pv,inverter,electrolyzer,fc,hp,boiler) [€/kWh] (battery) [€/kg] (Htank) [€/kW of produced hydrogen] (SMR)
+"cost per unit": float [€/kW] (pv,inverter,electrolyzer,fc,hp,boiler) [€/kWh] (battery) [€/kg] (Htank) [€/kW of produced hydrogen] (SMR) etc.. (see tech_cost of each technology)
 "OeM": operations and maintenance costs [%I0/y]       
 "refund": 
 	 "rate": rate of initial investemt that will be refunded [%]

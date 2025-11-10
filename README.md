@@ -5,11 +5,11 @@ An open-source model for simulating multy-energy systems such as Renewable Energ
 
 
 ### Authors
-**Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo**,**Mattia Calabrese**, **Pietro Lubello**,  and **Carlo Carcasci**\
+**Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo**,**Mattia Calabrese**, **Valentina Veltroni**, **Pietro Lubello**,  and **Carlo Carcasci**\
 Department of Industrial Engineering (DIEF), University of Florence (UNIFI), Italy
 
 ## Overview
-The Multi-Energy System Simulator has been developed to perform techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study single-standing buildings and hydrogen-integrated energy systems.
+The Multi-Energy System Simulator has been developed to perform techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study single-standing buildings and hydrogen-integrated energy systems. In its last update, it also integrates ammonia synthesis and conversion technologies.
 It can simulate hourly balances of the energy flows between technologies of each location (building) inside the REC and calculate the Net Present Value of each considering the interaction with the national grid given different incentive schemes. The program has been developed to be as general as possible so it can be used to simulate a wide range of different case studies while easily changing their configuration or parameters,both technical and economic.
 The code is extensively commented and can be easily used either as a black box by simply modifying the inputs and working on results or by directly modifying the code.
 
@@ -18,14 +18,19 @@ Models of different technologies are avialable and still under development to in
 - Photovoltaic panels
 - Wind turbines
 - Batteries
-- Electrolyzers
+- Electrolyzers (PEM, Alkaline)
 - Steam Methane Reformer
-- Fuel Cells
+- Fuel Cells (PEM, SOFC)
 - Hydrogen tanks
 - Hydrogen compressors
 - Heat pumps
 - Boilers (NG, electric or H2)
 - CHP (combined heat and power)
+- CCGT (H2 or NH3)
+- Ammonia Synthesis Reactor (Haber-Bosch based)
+- Ammonia tanks
+- Ammonia Cracker
+- Air separator (PSA)
 
 ### MESS needs the load profiles as input as a .csv file
 Depending on the type of meter installed, these data is in some cases made available by the electricity/gas supplier, in others it must be requested, while sometimes it cannot be obtained. In the latter case, specific programmes are required to generate such profiles in the specific .csv format needed as one of the program inputs. There are many programmes available online, the authors recommend the following:\
@@ -47,6 +52,8 @@ The model is developed in Python 3.9, and requires the following libraries:
 - json (input files are .json)
 - pvlib (used to download PV production series and weather data based on typical meteorological year)
 - matplotlib (used in post_process)
+- Coolprop (for thermodynamic libraries)
+- scipy (for opimization and interpolation function)
 
 A less up-to-date but fully functional and documented fortran version is also available:
 https://github.com/pielube/MESS-Fortran
@@ -68,6 +75,7 @@ You can run examples now. Three examples analysis are available:
 - "run_test_1" A small energy community composed by two consumers and one prosumer with PV and battery. A sensisivety analysi is also carried out.
 - "run_test_2" A residential building replaces the gas boiler with a heat pump
 - "run_test_3" On-site hydrogen production plant for an industrial facility 
+- "run_test_4" On-site ammonia production, storage and use in a CCGT
 
 Choose one of these, read it and press run!
 
@@ -86,6 +94,9 @@ Results are saved in both .pkl and .csv
 We suggest you to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test. 
 
 ## Related works
+- "Techno-economic assessment of Power-to-Ammonia-to-Power for long-term energy storage"\https://doi.org/10.1016/j.enconman.2025.120621
+- "An up-to-date perspective of levelized cost of hydrogen for PV-based grid-connected power-to-hydrogen plants across all Italy"\https://doi.org/10.1016/j.apenergy.2024.124958
+- "Techno-economic assessment of Green Hydrogen Production for Blending in the Natural Gas Network"\https://doi.org/10.1088/1742-6596/2893/1/012066
 - "Exploring the role of hydrogen in decarbonizing energy-intensive industries: A techno-economic analysis of a solid oxide fuel cell cogeneration system"\
 https://doi.org/10.1016/j.jclepro.2024.143254
 - "Optimal sizing of a distributed energy system with thermal load electrification"\

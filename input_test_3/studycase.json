@@ -13,7 +13,7 @@
                                                   "feed"    : false,
                                                   "priority":9      },
                             
-                            "hydrogen grid": {       "draw"     : false,
+                            "hydrogen grid": {       "draw"     : true,
                                                      "feed"     : false,
                                                      "priority" :10      },
                                                    
@@ -22,7 +22,8 @@
                                              "priority" :  12    },
 							                     				
                             "wind":    {  "model"   : "power curve",
-                                          "Npower"  : 100000,
+                                          "wind speed source": "PVGIS",
+                                          "Npower"  : 200000,
                                           "WScutin": 3.0,
                                           "WSrated": 13.0,
                                           "WScutoff": 25.0,
@@ -37,7 +38,7 @@
                                           "degradation factor": 1,
                                           "owned"   : true},
 										  
-                	    "PV"         : { "peakP"                  : 100000,            
+                	    "PV"         : { "peakP"                  : 200000,            
                 				         "tilt"                   : 30,               
                 				         "azimuth"                : 0,                
                     					 "optimal angles"         : true,            
@@ -51,7 +52,7 @@
                 				            
                   		       "electrolyzer": { 
                                       		     "Npower"            : 100,
-                                  	             "number of modules" : 600,
+                                  	             "number of modules" : 1000,
                                       	         "stack model"       : "PEM General",
                                       	         "efficiency"        :  false,																		   
                                       	         "strategy"          : "hydrogen-first",
@@ -65,7 +66,7 @@
                                               	 "priority"          : 5  },
                                                                                                                                
             				"fuel cell": {	"Npower": 100,
-            								"number of modules": 550,
+            								"number of modules": 350,
             								"stack model": "PEM General",
                 							"electric efficiency":  false,
                 							"thermal efficiency":  false,
@@ -84,12 +85,13 @@
                                                     "pressure losses IC": 0.02,
                                                     "T_IC"              : 308.15,
                                                     "n_stages"          : 3,
-                                                    "only_renewables"   : true,
+                                                    "only_renewables"   : false,
                                                     "priority"          : 7  },
 								                																		
                              "H tank":{
-                                       "max capacity"   : 6000,
+                                       "max capacity"   : 20000,
                                        "pressure"       : 300,
+                                       "min level"      : 0.01,
                                        "priority"       :8  }               				      		
                            }
 }   

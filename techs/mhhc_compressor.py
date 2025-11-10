@@ -17,7 +17,7 @@ from sklearn.preprocessing import PolynomialFeatures
 from scipy.optimize import curve_fit
 import os
 import sys
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir))) 
 from core import constants as c
 
 class mhhc_compressor:
@@ -25,15 +25,15 @@ class mhhc_compressor:
     def __init__(self,parameters, timestep_number,timestep=False):
 
         """
-        Create a Hydride Hydrogen Compressor object
+        Create a Hydride Hydrogen Compressor object.
 
-        parameters : dictionary
-            'Beta': float compression ratio [-]
-            
-            timestep_number : int number of timesteps considered in the simulation
+        Inputs:
+            parameters: dictionary
+                'Beta': compression ratio [-]
+            timestep_number : number of timesteps considered in the simulation
 
-        output : Hydride Hydrogen Compressor able to:
-            absosrb hydrogen at a certain level of pressure and temperature
+        Outputs: Hydride Hydrogen Compressor able to:
+            absorb hydrogen at a certain level of pressure and temperature
             and desorbs it at an higher level of pressure and temperature .use(e)
         """
         
@@ -303,29 +303,27 @@ class mhhc_compressor:
         
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kW]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
-
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kW]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
                 'replacement': dict
-                    'rate': float, replacement cost as a percentage of the initial investment [%]
-                    'years': int, after how many years it will be replaced
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
+
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 
@@ -345,7 +343,6 @@ class mhhc_compressor:
 
         self.cost = tech_cost    
        
-
     def plot_performancemhhc(self):
         
 
@@ -459,8 +456,17 @@ class mhhc_compressor:
         # plt.savefig('PerformancePlot1.png')
         plt.show()
 
-
     def use(self,step,hyd,storable_hydrogen):
+        """
+        Inputs:
+           step: simulation timestep index
+           hyd: hydrogen to be compressed [kg/s]
+           storable_hydrogen: available hydrogen for storage [kg]
+
+       Outputs:
+           hyd_compressed: hydrogen actually compressed [kg/s]
+           Sm3_requested: equivalent hydrogen demand as fuel [Sm³/s]
+        """
 
         p_in=45
 

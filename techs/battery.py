@@ -1,7 +1,7 @@
 import numpy as np
 import os
 import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))
 from core import constants as c
 
 class battery:    
@@ -10,25 +10,24 @@ class battery:
         """
         Create a battery object
     
-        parameters : dictionary
-            'nominal capacity': float [kWh]
-            'max charging power': maximum input power [kW]
-            'max discharging power': maximum output power [kW]
-            'charging efficiency': float efficiency of charging process
-            'discharging efficiency': float efficiency of discharging process
-            'depth of discharge': minimum SOC float
-            'self discharge rate': hourly SOC loss for self-discharge float                                                        
+        Inputs:
+            parameters: dictionary
+                'nominal capacity': [kWh]
+                'max charging power': maximum input power [kW]
+                'max discharging power': maximum output power [kW]
+                'charging efficiency': efficiency of charging process
+                'discharging efficiency': efficiency of discharging process
+                'depth of discharge': minimum SOC float
+                'self discharge rate': hourly SOC loss for self-discharge float                                                        
+                'ageing': bool true if aging has to be calculated
+                'life cycles': int number of life cycles to reach the end of battery life
+                'end life capacity': float maximum capacity left at end of life [%]
+                'collective': int 0: no collective rules. 1: priority to csc and then charge or discharge the battery.
         
-            'ageing': bool true if aging has to be calculated
-            'life cycles': int number of life cycles to reach the end of battery life
-            'end life capacity': float maximum capacity left at end of life [%]
-            
-            'collective': int 0: no collective rules. 1: priority to csc and then charge or discharge the battery.
-        
-        output : battery object able to:
-            supply or abrosrb electricity .use(h,e)
+        Outputs: battery object able to:
+            supply or absorb electricity .use(step,p)
             record the level of charge .LOC
-            take account of ageing .calculate_aging()   
+            take account of ageing .calculate_ageing()   
         """
         
         self.cost = False # will be updated with tec_cost()
@@ -76,16 +75,17 @@ class battery:
         """
         The battery can supply or absorb electricity
      
-        step: int step to be simulated
-        timestep: int selected time resolution for the simulation [min]
-        p: power requested (p<0) or provided (p>0) [kW]
+        Inputs:
+            step: step to be simulated
+            p: power requested (p<0) or provided (p>0) [kW]
       
-        output : electricity supplied or absorbed that step [kW]
+        Outputs: 
+            discharge*self.etaD or p: electricity supplied or absorbed that step [kW]
         """
-        #Apply self_discharge 
+        # Apply self_discharge 
 
         self.LOC[step] = self.LOC[step]*(1-self.self_discharge)
-        if self.ageing and (step*c.timestep/60/24%self.ageing_day == 0) and step!=0: # if aeging == True and it's time to calculate it
+        if self.ageing and (step*c.timestep/60/24%self.ageing_day == 0) and step!=0: # if ageing == True and it's time to calculate it
             self.calculate_ageing(step)
             
         if p >= 0: # charge battery
@@ -247,29 +247,27 @@ class battery:
     
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kWh]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kWh]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         
         tech_cost = {key: value for key, value in tech_cost.items()}
