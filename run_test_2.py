@@ -104,6 +104,8 @@ you should create your own postprocess_dev.py and create your own graphs
 with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb')              as f: balances  = pickle.load(f)
 with open('results/pkl/balances_'+name_refcase+'.pkl', 'rb')                as f: balances0 = pickle.load(f)
 with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb')    as f: economic  = pickle.load(f)
+with open('results/pkl/production_'+name_studycase+'.pkl', 'rb')            as f: production  = pickle.load(f)
+with open('results/pkl/consumption_'+name_studycase+'.pkl', 'rb')           as f: consumption  = pickle.load(f)   
 
 
 # Here some examples of graphs
@@ -115,7 +117,7 @@ pp.location_balance(name_studycase,'prosumer','gas')
 pp.location_balance(name_studycase,'prosumer','heating water')
 
 
-pp.LOC_plot(name_studycase)
+pp.LOC_plot(name_studycase,studycase)
 pp.cop(sim.locations['prosumer'].technologies['heatpump'].cop_story)
 pp.heating_demand( -sim.locations['prosumer'].power_balance['heating water']['heating water demand'])
 

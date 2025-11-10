@@ -107,18 +107,18 @@ with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb')    as f
 # Levelised Cost of Hydrogen calculation
 LCOH = eco.LCOH('industrial_facility',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)
 # Levelised Cost of Electricity calculation
-LCOE = eco.LCOE('industrial_facility',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)
+# LCOE = eco.LCOE('industrial_facility',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)
 
 # Some plot examples
 pp.hydrogen_chain_curves(studycase,name_studycase,'industrial_facility',print_=True,plot=True) # Hydrogen production chain cumulative curves
 
 ghg = pp.ghg_emissions(name_studycase,path,'industrial_facility',energy_market,print_= True) # greenhouse gas emission calculation
-pp.LOC_plot(name_studycase)
+pp.LOC_plot(name_studycase,studycase)
 pp.RES_plot(name_studycase,'industrial_facility')
 pp.demand_plot(name_studycase,'industrial_facility')  
 
 pp.plot_energy_balances(name_studycase,'industrial_facility',200,205,'hydrogen')
-pp.plot_energy_balances(name_studycase,'industrial_facility',200,205,'electricity')
+pp.plot_energy_balances(name_studycase,'industrial_facility',200,201,'electricity')
 pp.plot_energy_balances(name_studycase,'industrial_facility',90,92,'hydrogen')
 pp.plot_energy_balances(name_studycase,'industrial_facility',90,92,'electricity')
 
@@ -131,50 +131,50 @@ pp.NPV_plot(name_economic)
 # Run MESS several times as the installed PV power varies
 
 # =============================================================================
-# import numpy as np
-# import matplotlib.pyplot as plt
-# 
-# intervals   = 11
-# wind_size   = np.linspace(100000,300000,intervals)
-# 
-# # Creating lists to store parameters of the sensitivity analisys
-# lcoh        = [] # levelized cost of hydrogen
-# ghg         = [] # emission intensity
-# 
-# print('\nSensitivity analysis running:')
-# print('Wind Farm Size:')
-# 
-# for wind in wind_size: # varying wind power size
-#     print('                 '+str(int(wind/1000))+ ' MW' )
-#     
-#     name_studycase = f"Wind size = {wind/1000} MW"
-#     new_studycase = pre.change_peakW(studycase, 'industrial_facility', wind) # change wind size 
-#     cs = rec.REC(new_studycase,general,file_studycase,file_general,path) # create REC object
-#     cs.REC_power_simulation() # simulate REC enegy balances
-#     cs.tech_cost(tech_cost) # calculate the cost of all technologies 
-#     cs.save(name_studycase,'pkl') # save results in 'name_studycase.pkl'
-#     
-#     with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
-#     lcoh.append(eco.LCOH('industrial_facility',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)) 
-#     ghg.append(pp.ghg_emissions(name_studycase,path,'industrial_facility',energy_market,print_ = True))
-#     
-# # Plotting the results
-# fig, ax1 = plt.subplots(dpi=1000)   
-# ax1.plot(wind_size/1000,lcoh,label='LCOH',color='tab:blue')
-# ax1.set_xlabel("Wind Farm Size [MW]")
-# ax1.set_ylabel("LCOH [€/kgH$_\mathregular{2}$]", color='tab:blue')
-# ax1.grid()
-# ax1.set_title('industrial_facility')
-# 
-# ax2 = ax1.twinx()
-# ax2.plot(wind_size/1000,ghg,label='GHG',color='tomato')
-# ax2.set_ylabel("GHG [kgH$_\mathregular{2}$/kgCO$_\mathregular{2}$]",color='tomato')
-# 
-# lines, labels = ax1.get_legend_handles_labels()
-# lines2, labels2 = ax2.get_legend_handles_labels()
-# ax2.legend(lines + lines2, labels + labels2, loc='best')  
-# 
-# plt.show()
+import numpy as np
+import matplotlib.pyplot as plt
+
+intervals   = 11
+wind_size   = np.linspace(100000,300000,intervals)
+
+# Creating lists to store parameters of the sensitivity analisys
+lcoh        = [] # levelized cost of hydrogen
+ghg         = [] # emission intensity
+
+print('\nSensitivity analysis running:')
+print('Wind Farm Size:')
+
+for wind in wind_size: # varying wind power size
+    print('                 '+str(int(wind/1000))+ ' MW' )
+    
+    name_studycase = f"Wind size = {wind/1000} MW"
+    new_studycase = pre.change_peakW(studycase, 'industrial_facility', wind) # change wind size 
+    cs = rec.REC(new_studycase,general,file_studycase,file_general,path) # create REC object
+    cs.REC_power_simulation() # simulate REC enegy balances
+    cs.tech_cost(tech_cost) # calculate the cost of all technologies 
+    cs.save(name_studycase,'pkl') # save results in 'name_studycase.pkl'
+    
+    with open('results/pkl/balances_'+name_studycase+'.pkl', 'rb') as f: balances = pickle.load(f)
+    lcoh.append(eco.LCOH('industrial_facility',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)) 
+    ghg.append(pp.ghg_emissions(name_studycase,path,'industrial_facility',energy_market,print_ = True))
+    
+# Plotting the results
+fig, ax1 = plt.subplots(dpi=1000)   
+ax1.plot(wind_size/1000,lcoh,label='LCOH',color='tab:blue')
+ax1.set_xlabel("Wind Farm Size [MW]")
+ax1.set_ylabel("LCOH [€/kgH$_\mathregular{2}$]", color='tab:blue')
+ax1.grid()
+ax1.set_title('industrial_facility')
+
+ax2 = ax1.twinx()
+ax2.plot(wind_size/1000,ghg,label='GHG',color='tomato')
+ax2.set_ylabel("GHG [kgH$_\mathregular{2}$/kgCO$_\mathregular{2}$]",color='tomato')
+
+lines, labels = ax1.get_legend_handles_labels()
+lines2, labels2 = ax2.get_legend_handles_labels()
+ax2.legend(lines + lines2, labels + labels2, loc='best')  
+
+plt.show()
 # =============================================================================
 
 

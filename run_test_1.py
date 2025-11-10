@@ -104,6 +104,8 @@ with open('results/pkl/consumption_'+name_studycase+'.pkl', 'rb')           as f
 with open('results/pkl/production_'+name_studycase+'.pkl', 'rb')            as f: production  = pickle.load(f)                                                                                                            
 with open('results/pkl/balances_'+name_refcase+'.pkl', 'rb')                as f: balances0 = pickle.load(f)
 with open('results/pkl/economic_assessment_'+name_economic+'.pkl', 'rb')    as f: economic  = pickle.load(f)
+with open('results/pkl/production_'+name_studycase+'.pkl', 'rb')            as f: production  = pickle.load(f)
+with open('results/pkl/consumption_'+name_studycase+'.pkl', 'rb')           as f: consumption  = pickle.load(f)   
 
 # Here some examples of graphs
 b = pp.REC_electricity_balance(name_studycase)
@@ -116,7 +118,7 @@ pp.hist_12_balances_pc(name_studycase,1100)
 # Levelised Cost of Electricity calculation
 LCOE = eco.LCOE('prosumer',studycase,name_studycase,energy_market,path,revenues=False,refund=False,plot=True,print_=True)
 pp.csc_allocation_sum(name_studycase)
-pp.LOC_plot(name_studycase)
+pp.LOC_plot(name_studycase, studycase)
 pp.NPV_plot(name_economic)
     
 

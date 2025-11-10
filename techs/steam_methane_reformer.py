@@ -8,7 +8,7 @@ Created on Thu Nov 16 17:27:00 2023
 import numpy as np
 import os
 import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir))) 
 from core import constants as c
 import matplotlib.pyplot as plt
 
@@ -16,13 +16,14 @@ class SMR:
     
     def __init__(self,parameters,timestep=False):
         """
-        Create a SMR object 
-    
-        parameters : dictionary
-            'Ppeak': float peak hydrogen output thermal power [kWp] 
-            'efficiency': float overall SMR plant efficiency [-]
+        Create a SMR object.
+        
+        Inputs:
+            parameters: dictionary
+                'Ppeak': peak hydrogen output thermal power [kWp] 
+                'efficiency': overall SMR plant efficiency [-]
 
-        outputs : SMR object able to:
+        Outputs: SMR object able to:
             consume Natural gas and produce hydrogen.use(step,hyd)
         """
         
@@ -37,13 +38,14 @@ class SMR:
         
     def use(self,hyd):
         """
-        Compute thermal power consumption (natural gas consumption)
+        Compute thermal power consumption (natural gas consumption).
         
-        inputs :
-            hyd float hydrogen demand in step [kg/s]
+        Inputs:
+            hyd: hydrogen demand in step [kg/s]
             
-        outputs : 
-            thermal power consumption float [kW]
+        Outputs: 
+            NG_consumption_kW: thermal power consumption float [kW]
+            hyd_produced: hydrogen produced [kg/s]
         """
         
         hyd_kW = - hyd*c.LHVH2*1e3    # kW hydrogen thermal power output needed
@@ -56,29 +58,27 @@ class SMR:
     
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kW]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kW]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         
         tech_cost = {key: value for key, value in tech_cost.items()}        

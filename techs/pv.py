@@ -4,7 +4,7 @@ import numpy as np
 import os
 import pickle
 import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   
 from core import constants as c
 
 class PV:    
@@ -13,25 +13,23 @@ class PV:
         """
         Create a PV object based on PV production taken from PVGIS data 
     
-        parameters : dictionary
-            'peakP': float peak DC power [kWp] 
-            'losses': float losses in cables, power inverters, dirt (sometimes snow), over the years loss of power [%]
-            'tilt':  float surface tilt [deg]
-            'azimuth': float azimuth angle 0 = south, 180 = north [deg]  
-            'serie': if "TMY" production serie based on typical meteorological year is used
-                if INT [2005-2016] a serie of the specific year is used
-                if "filename.csv" a different serie can be used (upload it in input/production)
-                "filename.csv" must be the hourly time series of PV production 8760 values [Wh]
-                in this case 'peakP', 'azimuth' and 'tilt' are ignored
-            'Max field width': optional: float >0
-            'Max field length': optional: float >0
-            'ageing': bool, if PV performance degradation must be considered
-            'degradation factor': float, [%] of performance loss every year                                                                                                                       
-            
-        general: dictironary
-            see rec.py
+        Inputs:
+            parameters: dictionary
+                'peakP': peak DC power [kWp] 
+                'losses': losses in cables, power inverters, dirt (sometimes snow), over the years loss of power [%]
+                'tilt': surface tilt [deg]
+                'azimuth': azimuth angle 0 = south, 180 = north [deg]  
+                'serie': if "TMY" production serie based on typical meteorological year is used
+                    if INT [2005-2016] a serie of the specific year is used
+                    if "filename.csv" a different serie can be used (upload it in input/production)
+                    "filename.csv" must be the hourly time series of PV production 8760 values [Wh]
+                    in this case 'peakP', 'azimuth' and 'tilt' are ignored
+                'Max field width': optional: >0
+                'Max field length': optional: >0
+                'ageing': bool, if PV performance degradation must be considered
+                'degradation factor': [%] of performance loss every year                                                                                                                       
 
-        output : PV object able to:
+        Outputs: PV object able to:
             produce electricity .use(h)
         """
         
@@ -64,7 +62,7 @@ class PV:
                 pv = pd.read_csv(path+'/production/'+name_serie)['P'].to_numpy()
             
             else: # if a new pv serie must be downoladed from PV gis
-                print(f"Downolading a new PV serie from PVgis for {location_name}_{file_general}_{file_structure}") 
+                print(f"Downloading a new PV serie from PVgis for {location_name}_{file_general}_{file_structure}") 
                     
                 losses = parameters['losses']
                 tilt = parameters['tilt']
@@ -166,42 +164,43 @@ class PV:
         # from hourly to timestep
         if c.timestep < 60 and (parameters['serie'] == "TMY" or type(parameters['serie']) == int):
             self.production =  np.repeat(self.production, 60/c.timestep) # [kW] creating a production series alligned with selected timestep 
+   
     def use(self,step):
         """
-        Produce electricity
+        Produce electricity.
         
-        step : int step to be simulated
+        Inputs:
+            step: step to be simulated
     
-        output : float electricity produced that hour [kWh]    
+        Outputs: 
+            self.production[step]: electricity produced that hour [kWh]    
         """
         
         return(self.production[step])
 
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kW]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kW]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         
         tech_cost = {key: value for key, value in tech_cost.items()}

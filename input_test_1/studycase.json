@@ -16,8 +16,10 @@
 							"priority": 2,
 							"ageing": false,
 							"degradation factor": 1,							   
-							"owned": true},		     
+							"owned": true},		 
+							    
 				"wind":    {  "model"   : "power curve",
+            				"wind speed source": "PVGIS",
                             "Npower"  : 5,
                             "WScutin": 3.0,
                             "WSrated": 13.0,

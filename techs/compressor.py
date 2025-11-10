@@ -9,8 +9,41 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temporarily adding constants module path 
+from functools import lru_cache
 from core import constants as c
+
+@lru_cache(maxsize=None)
+def part_load_eta(massflowrate_fraction):
+    """
+    Calculation of the part_load_eta (scaling factor for the isentropic efficiency) for a reciprocating 
+    compressor based on the given massflowrate fraction, regulation method: suction valve unloading or clearance pocket.
+    Uses a second-order polynomial fit based on literature curves.
+    """
+    # [Wang, L., et al. "Performance comparison of capacity control methods for reciprocating compressors." IOP Conference Series: Materials Science and Engineering. Vol. 90. No. 1. IOP Publishing, 2015.]
+    m_fraction = np.array([0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+    part_load_eta_values = np.array([0.82, 0.86, 0.9, 0.93, 0.96, 0.99, 1])
+    coefficients = np.polyfit(m_fraction, part_load_eta_values, 2)
+    model = np.poly1d(coefficients)
+    part_load_eta = model(massflowrate_fraction)
+    
+    # m_fractions = np.linspace(0.3, 1, 50)
+    # eta = np.zeros(len(m_fractions))
+    # i = 0
+    # for mf in m_fractions:
+    #     eta[i] = model(mf)
+    #     i +=1 
+    # plt.figure(figsize=(8, 5))
+    # plt.plot(m_fractions*100, eta, label=r"$\eta_{part} = \eta_{iso, off-design} / \eta_{iso, design}$", color='blue', linewidth=2)
+    # plt.xlabel('Massflowrate fraction [%]', fontsize=12)
+    # plt.ylabel('$\eta_{part}$ [-]', fontsize=12)
+    # plt.title('Compressor partial load efficiency', fontsize=14)
+    # plt.legend(fontsize=12)
+    # plt.grid(True, linestyle='--', alpha=0.7)
+    # plt.ylim(0, 1.1)
+    # plt.show()
+    
+    return part_load_eta
+
 
 class Compressor:
     
@@ -18,24 +51,28 @@ class Compressor:
         """
         Create a compressor object
     
-        parameters : dictionary
-            'compressor model'  :'simple_compressor',                       # specific consumption calculation based on interpolation on a given dataset 
-                                 'normal_compressor',                       # single-stage compressor without refrigeration - detailed thermodynamic calculations
-                                 'compressor_with_refrigeration',           # single-stage compressor with refrigeration - detailed thermodynamic calculations
-                                 'multistage_compressor_with_refrigeration' # multi-stage compressor with refrigeration - detailed thermodynamic calculations
-            'P_out'                 : max pressure [bar]          
-            'P_in'                  : inlet pressure [bar]
-            'T_in'                  : inlet Temperature [K]
-            'Npower'                : power [kW]                    # Nominal power of compressor, to be provided if 'flow_rate' is not provided 
-            'flow_rate'             : hydrogen flow rate [kg/s]     # Nominal mass flow rate of compressor, to be provided if 'Npower' is not provided 
-            'pressure losses IC'    : pressure losses in heat exchangers [%]
-            'T_IC'                  : Temperature of intercooler [K]
-            'n_stages'              : number of compression stages
-            'only_renewables'       : operational strategy. Working with only renewable energy or not, boolean value
-        
-        timestep_number : int number of timesteps considered in the simulation [-]
-        timestep        : int number of minutes considered as temporal resolution [min]
-        maxflowrate     : float maximum mass flow rate produced by the upstream electrolysis system [kg/s]
+        Inputs:
+            parameters: dictionary
+                'compressor model':'simple_compressor',                       # specific consumption calculation based on interpolation on a given dataset 
+                                   'normal_compressor',                       # single-stage compressor without refrigeration - detailed thermodynamic calculations
+                                   'compressor_with_refrigeration',           # single-stage compressor with refrigeration - detailed thermodynamic calculations
+                                   'multistage_compressor_with_refrigeration' # multi-stage compressor with refrigeration - detailed thermodynamic calculations
+                'P_out': max pressure [bar]          
+                'P_in': inlet pressure [bar]
+                'T_in': inlet Temperature [K]
+                'Npower': power [kW]                    # Nominal power of compressor, to be provided if 'flow_rate' is not provided 
+                'flow_rate': hydrogen flow rate [kg/s]     # Nominal mass flow rate of compressor, to be provided if 'Npower' is not provided 
+                'pressure losses IC': pressure losses in heat exchangers [%]
+                'T_IC': Temperature of intercooler [K]
+                'n_stages': number of compression stages
+                'only_renewables': operational strategy. Working with only renewable energy or not, boolean value
+            
+            timestep_number: number of timesteps considered in the simulation [-]
+            timestep: number of minutes considered as temporal resolution [min]
+            maxflowrate: maximum mass flow rate produced by the upstream electrolysis system [kg/s]
+            
+        Outputs: compressor object able to:
+            absorbs electricity and works on fluid .use(step,available_hyd_lp,storable_hydrogen_hp,massflowrate,p_H2_tank)
         
         """
         
@@ -56,7 +93,7 @@ class Compressor:
         self.Nflowrate   = parameters.get('Nflow_rate', False)  # [kg/s]  nominal flow rate that can be processed by the compressor
         if maxflowrate_ele:             # if code is being executed from main maxflowrate_ele is a given parameter: maximum hydrogen producible by the electrolyzers. Compressor functioning only in conjuction with electorlyzers. 
             if parameters.get('Npower') and parameters.get('Npower') < maxflowrate_ele:
-                warning_message = f"Warning: The specified flow rate is lower than maximum flow rate producible by electorlysers. \n\
+                warning_message = f"Warning: The specified flow rate is lower than maximum flow rate producible by electrolysers. \n\
                                     Compressor 'flow_rate' parameter should be increased to at least {maxflowrate_ele:.5f} kg/s in studycase file."
                 warnings.warn(warning_message, UserWarning)
                 
@@ -106,10 +143,12 @@ class Compressor:
             slope       = df.loc[df['Pressure in [barg]'] == self.P_in, 'Slope'].iloc[0]
             intercept   = df.loc[df['Pressure in [barg]'] == self.P_in, 'Intercept'].iloc[0]
             
+            self.beta_max = self.P_out / self.P_in
             self.en_cons     = (intercept+slope*(self.P_out-self.P_in))*self.conversion     # [kJ/kgH2] specific energy consumption of the simple compressor model
             self.Npower = self.Nflowrate*self.en_cons/self.eta_motor         # [kW] compressor nominal power - simple assumption
             
             print(f"\nSimple compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")
+        
         else:  # if any other model is selected
 
             # initialisation of variables - thermodynamic points of compression process
@@ -199,7 +238,7 @@ class Compressor:
                     self.Nflowrate      = maxflowrate_ele
                     self.Npower         = (self.Nflowrate*self.comp_lav_spec[0])/self.eta_motor     # [kW] compressor nominal power - simple assumption
 
-                print(f"Normal compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")                                                                                                                                                             
+                print(f"\nNormal compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")                                                                                                                                                             
             ################################################################################################
             # Single-stage compressor operation with refrigeration 
             if self.model == 'compressor_with_refrigeration': 
@@ -292,10 +331,10 @@ class Compressor:
                     self.Npower         = m.ceil(Power/self.eta_motor)      # [kW] compressor nominal power 
                     self.IC_power_list  = self.Nflowrate*self.delta_H       # [kW] Total heat to be removed by the cooling system
 
-                print(f"Single stage refrigerated compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")
+                print(f"\nSingle stage refrigerated compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")
             ########################################################################################à
             # Multistage compressor operation with refrigeration
-            if parameters['compressor model'] == 'multistage_compressor_with_refrigeration':
+            if self.model == 'multistage_compressor_with_refrigeration':
                 
                 self.T_IC           = parameters['T_IC']
                 self.delta_P        = parameters['pressure losses IC']  
@@ -318,10 +357,6 @@ class Compressor:
                 self.comp_power_list    = []
                 self.IC_power_list      = []
                 self.comp_beta_targ     = np.power(self.beta_max, 1 / self.n_stages)
-                
-                # P_ref       = 2
-                # T_ref       = 298.15
-                # deltaT_app  = 5
                                             
                 for i in range(self.n_stages):
                                                
@@ -392,7 +427,7 @@ class Compressor:
                     self.Npower         = m.ceil(Power/self.eta_motor)  # [kW] compressor nominal power 
                     self.IC_power_list  = self.Nflowrate*self.delta_H   # [kW] Total heat to be removed by the cooling system
                     
-                print(f"Multi stage refrigerated compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")                
+                # print(f"\nMulti stage refrigerated compressor model with a nominal power of {int(self.Npower)} kW to comprise a max flow rate of {round(self.Nflowrate,3)} kg/s")                
     ##########################################################################################################################################################
                     
                 # # Hydrogen Refueling Station (HRS) application - isoentalpic transformation, control from T to dispenser to check if temperature limits are met
@@ -846,19 +881,21 @@ class Compressor:
 ############################################################################################################################################################################################################    
 
 
-    def use(self,step,available_hyd_lp=False,storable_hydrogen_hp=False,massflowrate=False):
+    def use(self,step,available_hyd_lp=False,storable_hydrogen_hp=False,massflowrate=False,p_H2_tank=False):
         """
         Compressor object absorbs electricity and works on fluid
         
-        storable_hydrogen_hp    : float storable hydrogen H tank max_capacity - SOC[h-1] [kg] or maximum absorbable production if there is no tank
-        available_hyd_lp        : float available hydrogen H tank SOC[h-1] [kg]
-        massflowrate            : float hydrogen flow rate to be processed in the timestep [kg/s]
-        step                    : int step to be simulated [-]
+        Inputs:
+            step: step to be simulated [-]
+            available_hyd_lp: available hydrogen H tank SOC[h-1] [kg]
+            storable_hydrogen_hp: storable hydrogen H tank max_capacity - SOC[h-1] [kg] or maximum absorbable production if there is no tank
+            massflowrate: hydrogen flow rate to be processed in the timestep [kg/s]
+            p_H2_tank: pressure of the H2 tank, in case of multistage compressor to see how many stages need to be activated [bar]
 
-        output : 
-        float hydrogen compressed in the timestep [kg/s]    
-        float power absorbed that hour [kW]
-        float cooling needs [kW]
+        Outputs: 
+            self.hyd[step]: hydrogen compressed in the timestep [kg/s]    
+            p_absorbed: power absorbed that hour [kW]
+            t_absorbed: cooling needs [kW]
         """
         if self.model == 'simple_compressor':
             
@@ -892,12 +929,13 @@ class Compressor:
             
             else:
                 self.hyd[step]  = massflowrate
-                p_absorbed      = (massflowrate*self.comp_lav_spec[0])/self.eta_motor
+                p_absorbed      = (massflowrate*self.comp_lav_spec[0])/self.eta_motor/part_load_eta(massflowrate/self.Nflowrate)
                 t_absorbed      = 0
             
                                                           
                 
-                return(self.hyd[step],-p_absorbed,-t_absorbed)                                                           
+                return(self.hyd[step],-p_absorbed,-t_absorbed)  
+                                                         
         elif self.model == 'multistage_compressor_with_refrigeration' or self.model == 'compressor_with_refrigeration': 
             
             if massflowrate == False:                   # compressor working in between a buffer and an HPH storage. Only full load operations allowed. 
@@ -917,13 +955,39 @@ class Compressor:
                             
                 return(self.hyd[step],-p_absorbed,-t_absorbed)
             
-            else:   # working with a single storage pressure level. Streamlining of partial load functioning - Can be upgraded
+            else:   # working with a single storage pressure level
                 self.hyd[step]  = massflowrate
-                p_absorbed      = (massflowrate*sum(self.comp_lav_spec))/self.eta_motor
+                if p_H2_tank != False and self.model == 'multistage_compressor_with_refrigeration':
+                    check = False
+                    for i in range(self.n_stages):
+                        # The pressure considered is the one with the new mass of H2 already inside the tank, to ensure the filling of all the mass in that timestep. 
+                        # This because if, during the filling, the pressure inside the tank exceeds the compressor's delivery pressure, the filling can no longer take place.
+                        if p_H2_tank < self.P_points[i*2 + 1] and check == False:  
+                            check = True
+                            p_absorbed = (massflowrate*sum(self.comp_lav_spec[:i+1]))/self.eta_motor/part_load_eta(massflowrate/self.Nflowrate) 
+                else:
+                    p_absorbed = (massflowrate*sum(self.comp_lav_spec))/self.eta_motor/part_load_eta(massflowrate/self.Nflowrate)
                 t_absorbed      = massflowrate*self.delta_H
                 
                 return(self.hyd[step],-p_absorbed,-t_absorbed)
                 
+    def pressure_buffer_check(self,original_buffer_LOP, buffer_LOP):
+        # For 2 stages hydrogen compressor
+        check = True
+        mismatch_timesteps = []
+        for i in range(len(buffer_LOP)):
+            if original_buffer_LOP[i] < self.P_points[1]:
+                if not buffer_LOP[i] < self.P_points[1]:
+                    mismatch_timesteps.append(i)
+                    check = False
+            
+            elif self.P_points[1] <= original_buffer_LOP[i] < self.P_points[3]:
+                if not (self.P_points[1] <= buffer_LOP[i] < self.P_points[3]):
+                    mismatch_timesteps.append(i)
+                    check = False
+                    
+        return check, mismatch_timesteps
+    
     @property
     def comp_power(self):
 
@@ -939,67 +1003,57 @@ class Compressor:
     
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kW]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kW]
+                'OeM': operation and maintenance costs, percentage on initial investment [%]
+                'refund': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of equipment cost [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refund': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': [€]
+                'refund': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of equipment cost [%]
+                    'years': after how many years it will be replaced
         """
-        compressor_costs = {                                                                # Ref: https://hsweb.hs.uni-hamburg.de/projects/star-formation/hydrogen/P2H_Full_Study_FCHJU.pdf
-                            'Gas Flow [kg/h]'               : [1,10,100,1000,10000],        # dataset to be updated 
-                            'Compressed Tanks [€/(kg/h)]'   : [63460,29007,13259,6016,2770]
-                            }
-        
-        costdf = pd.DataFrame(compressor_costs)
-        
-        x = costdf['Gas Flow [kg/h]']
-        y = costdf['Compressed Tanks [€/(kg/h)]']
-        
-        f = interp1d(x, y,fill_value= 'extrapolate')
-        
-        hourly_massflow = self.Nflowrate*3600       # [kg/h] maxflowrate defined in kg/s --> *3600 to obtain kg/h
-        specific_cost = f(hourly_massflow)          # [€/(kg/h)] 
+        size = self.Npower
+        Q = self.Nflowrate*3600       # [kg/h] maxflowrate defined in kg/s --> *3600 to obtain kg/h
         
         tech_cost = {key: value for key, value in tech_cost.items()}
-
-        if self.model == 'simple_compressor':
-            exchange_rate   = 0.91                                           # [2015USD/2023€]  exchange rate between USD and €
-            correlation1    = (51901*(hourly_massflow**0.65))*exchange_rate # Ref: https://www.sciencedirect.com/science/article/pii/S0360319919330022?via%3Dihub
-            correlation     = correlation1
-        elif self.model != 'simple_compressor':
-            size = self.Npower
-            IF              = 1.3                                            # [-] Installation Factor
-            correlation2    = 63684.6*(self.Npower**0.4603)*IF               # Ref: https://transitionaccelerator.ca/wp-content/uploads/2021/10/TA-Briefs-1.2-The-Techno-Economics-of-Hydrogen-Compression-FINALPDF.pdf
-            correlation     = correlation2
         
         if tech_cost['cost per unit'] == 'default price correlation':
-            C = correlation                         # [€] 
+            # Ref: https://hsweb.hs.uni-hamburg.de/projects/star-formation/hydrogen/P2H_Full_Study_FCHJU.pdf
+            A = 100000 
+            B = 300000
+            a = 0.66
+            b = 0.66
+            c = 0.25
+            d = 0.25
+            Q_ref = 50 
+            beta_ref = 200 / 30
+            P_ref = 200
+            CEPCI_2017 = 567.5
+            CEPCI_2024 = 800
+            C = A * (Q / Q_ref)**a + B * (Q / Q_ref)**b + (self.beta_max / beta_ref)**c + (self.P_out / P_ref)**d
+            C = C * CEPCI_2024 / CEPCI_2017
         else:
             C = size * tech_cost['cost per unit']   # [€]
 
         tech_cost['total cost'] = tech_cost.pop('cost per unit')
         tech_cost['total cost'] = C
-        tech_cost['OeM'] = tech_cost['OeM'] *C /100 # €
+        tech_cost['OeM'] = tech_cost['OeM'] *C /100 # [€]
 
         self.cost = tech_cost
+
 
 ###########################################################################################################################################################################
 
@@ -1009,155 +1063,167 @@ if __name__ == "__main__":
     
     'Simple Compressor test'
 
-    inp_test = {'P_out'             : 525,
+    inp_test = {'P_out'             : 210,
                 'P_in'              : 30,
-                'compressor model'  : 'simple_compressor',
-                'Nflow_rate'        : 0.03,
+                'compressor model'  : 'multistage_compressor_with_refrigeration',
+                'Nflow_rate'        : 0.14,
                 'fluid'             : 'Hydrogen',
                 'T_in'              : 343.15,
                 'pressure losses IC': 0.00,
-                'T_IC'              : 308.15,
-                'n_stages'          : 3,
+                'T_IC'              : 298.15,
+                'n_stages'          : 2,
                 'only_renewables'   : False}
 
     sim_steps   = 50      # [-] number of steps to be considered for the simulation - usually a time horizon of 1 year minimum is considered
     timestep    = 60      # [min] selected timestep for the simulation
-        
-    P_in    = np.array([0,15,30,60])
-    P_out   = np.arange(100,701,50)
-    en_cons = {}   # [kWh/kg]
     
-    for i in P_in:
-        inp_test['P_in'] = i
-        pout = []
-        en_cons[i] = pout
-        for k in P_out:
-            inp_test['P_out'] = k
-            comp  = Compressor(inp_test,sim_steps,timestep=timestep)  # creating compressor object
-            pout.append(round(comp.en_cons/3600,2))
-    
-    fig = plt.figure(dpi=600)
-    for key, values in en_cons.items():
-        plt.plot(P_out-key, values, label=key)
-
-    plt.xlabel('P$_{diff}$ (P$_{out}$-P$_{in}$) [bar]')
-    plt.ylabel('Energy consumption [kWh/kg$_{H2}$]')
-    plt.legend(title='P$_{inlet}$ [barg]')
-    plt.grid(alpha=0.3)
-    plt.title('Simple compressor model - Specific consumption')
-    plt.show()
-
-    'Multistage Compressor With refrigeration test'
-    
-    inp_test['compressor model'] = 'multistage_compressor_with_refrigeration'
-    P_in    = np.array([1,15,30,60])
-    power_cons  = {} # # [kWh/kg] compressor power consumption
-    
-    for i in P_in:
-        inp_test['P_in'] = i
-        pout = []
-        power_cons[i] = pout
-        for k in P_out:
-            inp_test['P_out'] = k
-            comp  = Compressor(inp_test,sim_steps,timestep=timestep)  # creating compressor object
-            power = sum(comp.comp_lav_spec)/comp.eta_motor/3600
-            pout.append(round(power,2))
-    
-    fig = plt.figure(dpi=600)
-    for key, values in power_cons.items():
-        plt.plot(P_out-key, values, label=key)
-
-    plt.xlabel('P$_{diff}$ (P$_{out}$-P$_{in}$) [bar]')
-    plt.ylabel('Energy consumption [kWh/kg$_{H2}$]')
-    plt.legend(title='P$_{inlet}$ [bar]')
-    plt.grid(alpha=0.3)
-    plt.title('Multistage compressor model - Specific consumption')
-    plt.show()
-    
-    'Power consumption - FLow rate'
-    
-    flow        = np.linspace(0,inp_test['Nflow_rate'],sim_steps)    # [kg/s] hydrogen mass flow rate 
-    power_cons  = [] # [kW] compressor power consumption
-    cooling     = [] # [kW] thermal power need
-    
-    for i,val in enumerate(flow):
-        a,b = comp.use(i,massflowrate=val)[1:]
-        power_cons.append(-a)
-        cooling.append(-b)
-     
-    fig, ax = plt.subplots(dpi=600)
-    ax.plot(flow*3600,power_cons,color='tab:green',zorder=3)
-    ax.set_xlabel('Hydrogen mass flow rate [kg/h]')
-    ax.set_ylabel('Power consumption [kW]')
-    ax.grid(alpha=0.3, zorder=-1)
-    ax.set_title(f"Consumption vs flow rate (Nominal Power = {comp.Npower} kW)")
-    
-    'Specific work for different fluids'
-    
-    fluid = ['Hydrogen','Helium','Methane']    
-    P_out   = np.arange(2,801,10)
-    power_cons  = {}  # [kWh/kg] compressor power consumption
-    inp_test['P_in'] = 1
-    colors = ['#1f77b4', '#7fcdbb',  '#fc8d59']
-    
-    for name in fluid:
-        inp_test['fluid'] = name
-        pout = []
-        power_cons[name] = pout
-        for k in P_out:
-            inp_test['P_out'] = k
-            comp  = Compressor(inp_test,sim_steps,timestep=timestep)  # creating compressor object
-            power = sum(comp.comp_lav_spec)/comp.eta_motor/3600
-            pout.append(round(power,2))
-    
-    fig = plt.figure(dpi=600)
-    i = 0
-    for key, values in power_cons.items():
-        plt.plot(P_out, values, label=key, color=colors[i])
-        i += 1
-
-    plt.xlabel('Final pressure [bar]')
-    plt.ylabel('Energy consumption [kWh/kg$_{H2}$]')
-    plt.legend(title='Fluid')
-    plt.grid(alpha=0.3)
-    plt.title('Multistage compressor model - Specific consumption')
-    plt.show()
-    
-    'Energy consumption vs HHV - Hydrogen'
-    
-    inp_test['fluid'] = 'Hydrogen'
-    pout    = []            # [kJ/kg] power cons
-    hhv     = c.HHVH2*1000  # [kJ/kg] heating value
-    for k in P_out:
-        inp_test['P_out'] = k
-        comp  = Compressor(inp_test,sim_steps,timestep=timestep)    # creating compressor object
-        power = round(sum(comp.comp_lav_spec)/comp.eta_motor,2)     # [kJ/kg] 
-        pout.append(round(power/hhv*100,2))
-    
-    fig = plt.figure(dpi=600)
-    plt.plot(P_out, pout, color=colors[0])
-    plt.xlabel('Final pressure [bar]')
-    plt.ylabel('Compression energy as HHV % [-]')
-    plt.grid(alpha=0.3)
-    plt.title('Energy costs vs HHV - Hydrogen')
-    plt.show()
-    
-    
-    'Test - Thermodynamic transformation'
-    
-    inp_test = {'P_out'             : 525,
-                'P_in'              : 30,
-                'compressor model'  : 'multistage_compressor_with_refrigeration',
-                'Nflow_rate'        : 0.03,
-                'fluid'             : 'Hydrogen',
-                'T_in'              : 343.15,
-                'pressure losses IC': 0.00,
-                'T_IC'              : 308.15,
-                'n_stages'          : 3,
-                'only_renewables'   : False}
-
     comp  = Compressor(inp_test,sim_steps,timestep=timestep)    # creating compressor object
-    comp.thermodynamics_points()
+    electricity = comp.use(1, massflowrate=0.0231, p_H2_tank=198)[1]
+    
+    tech_cost =  {"cost per unit": "default price correlation",
+                            "equipment OeM": 4, 
+                            "facility OeM": 4,
+                            "other costs" : 80,
+                            "refund": { "rate": 0, "years": 0},
+                            "replacement": {"rate": 100, "years": 20}}
+    print(electricity)
+    
+        
+    # P_in    = np.array([0,15,30,60])
+    # P_out   = np.arange(100,701,50)
+    # en_cons = {}   # [kWh/kg]
+    
+    # for i in P_in:
+    #     inp_test['P_in'] = i
+    #     pout = []
+    #     en_cons[i] = pout
+    #     for k in P_out:
+    #         inp_test['P_out'] = k
+    #         comp  = Compressor(inp_test,sim_steps,timestep=timestep)  # creating compressor object
+    #         pout.append(round(comp.en_cons/3600,2))
+    
+    # fig = plt.figure(dpi=600)
+    # for key, values in en_cons.items():
+    #     plt.plot(P_out-key, values, label=key)
+
+    # plt.xlabel('P$_{diff}$ (P$_{out}$-P$_{in}$) [bar]')
+    # plt.ylabel('Energy consumption [kWh/kg$_{H2}$]')
+    # plt.legend(title='P$_{inlet}$ [barg]')
+    # plt.grid(alpha=0.3)
+    # plt.title('Simple compressor model - Specific consumption')
+    # plt.show()
+
+    # 'Multistage Compressor With refrigeration test'
+    
+    # inp_test['compressor model'] = 'multistage_compressor_with_refrigeration'
+    # P_in    = np.array([1,15,30,60])
+    # power_cons  = {} # # [kWh/kg] compressor power consumption
+    
+    # for i in P_in:
+    #     inp_test['P_in'] = i
+    #     pout = []
+    #     power_cons[i] = pout
+    #     for k in P_out:
+    #         inp_test['P_out'] = k
+    #         comp  = Compressor(inp_test,sim_steps,timestep=timestep)  # creating compressor object
+    #         power = sum(comp.comp_lav_spec)/comp.eta_motor/3600
+    #         pout.append(round(power,2))
+    
+    # fig = plt.figure(dpi=600)
+    # for key, values in power_cons.items():
+    #     plt.plot(P_out-key, values, label=key)
+
+    # plt.xlabel('P$_{diff}$ (P$_{out}$-P$_{in}$) [bar]')
+    # plt.ylabel('Energy consumption [kWh/kg$_{H2}$]')
+    # plt.legend(title='P$_{inlet}$ [bar]')
+    # plt.grid(alpha=0.3)
+    # plt.title('Multistage compressor model - Specific consumption')
+    # plt.show()
+    
+    # 'Power consumption - FLow rate'
+    
+    # flow        = np.linspace(0,inp_test['Nflow_rate'],sim_steps)    # [kg/s] hydrogen mass flow rate 
+    # power_cons  = [] # [kW] compressor power consumption
+    # cooling     = [] # [kW] thermal power need
+    
+    # for i,val in enumerate(flow):
+    #     a,b = comp.use(i,massflowrate=val)[1:]
+    #     power_cons.append(-a)
+    #     cooling.append(-b)
+     
+    # fig, ax = plt.subplots(dpi=600)
+    # ax.plot(flow*3600,power_cons,color='tab:green',zorder=3)
+    # ax.set_xlabel('Hydrogen mass flow rate [kg/h]')
+    # ax.set_ylabel('Power consumption [kW]')
+    # ax.grid(alpha=0.3, zorder=-1)
+    # ax.set_title(f"Consumption vs flow rate (Nominal Power = {comp.Npower} kW)")
+    
+    # 'Specific work for different fluids'
+    
+    # fluid = ['Hydrogen','Helium','Methane']    
+    # P_out   = np.arange(2,801,10)
+    # power_cons  = {}  # [kWh/kg] compressor power consumption
+    # inp_test['P_in'] = 1
+    # colors = ['#1f77b4', '#7fcdbb',  '#fc8d59']
+    
+    # for name in fluid:
+    #     inp_test['fluid'] = name
+    #     pout = []
+    #     power_cons[name] = pout
+    #     for k in P_out:
+    #         inp_test['P_out'] = k
+    #         comp  = Compressor(inp_test,sim_steps,timestep=timestep)  # creating compressor object
+    #         power = sum(comp.comp_lav_spec)/comp.eta_motor/3600
+    #         pout.append(round(power,2))
+    
+    # fig = plt.figure(dpi=600)
+    # i = 0
+    # for key, values in power_cons.items():
+    #     plt.plot(P_out, values, label=key, color=colors[i])
+    #     i += 1
+
+    # plt.xlabel('Final pressure [bar]')
+    # plt.ylabel('Energy consumption [kWh/kg$_{H2}$]')
+    # plt.legend(title='Fluid')
+    # plt.grid(alpha=0.3)
+    # plt.title('Multistage compressor model - Specific consumption')
+    # plt.show()
+    
+    # 'Energy consumption vs HHV - Hydrogen'
+    
+    # inp_test['fluid'] = 'Hydrogen'
+    # pout    = []            # [kJ/kg] power cons
+    # hhv     = c.HHVH2*1000  # [kJ/kg] heating value
+    # for k in P_out:
+    #     inp_test['P_out'] = k
+    #     comp  = Compressor(inp_test,sim_steps,timestep=timestep)    # creating compressor object
+    #     power = round(sum(comp.comp_lav_spec)/comp.eta_motor,2)     # [kJ/kg] 
+    #     pout.append(round(power/hhv*100,2))
+    
+    # fig = plt.figure(dpi=600)
+    # plt.plot(P_out, pout, color=colors[0])
+    # plt.xlabel('Final pressure [bar]')
+    # plt.ylabel('Compression energy as HHV % [-]')
+    # plt.grid(alpha=0.3)
+    # plt.title('Energy costs vs HHV - Hydrogen')
+    # plt.show()
+    
+    
+    # 'Test - Thermodynamic transformation'
+    
+    # inp_test = {'P_out'             : 525,
+    #             'P_in'              : 30,
+    #             'compressor model'  : 'multistage_compressor_with_refrigeration',
+    #             'Nflow_rate'        : 0.03,
+    #             'fluid'             : 'Hydrogen',
+    #             'T_in'              : 343.15,
+    #             'pressure losses IC': 0.00,
+    #             'T_IC'              : 308.15,
+    #             'n_stages'          : 3,
+    #             'only_renewables'   : False}
+
+    # comp  = Compressor(inp_test,sim_steps,timestep=timestep)    # creating compressor object
+    # comp.thermodynamics_points()
 
   
     

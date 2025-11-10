@@ -4,35 +4,27 @@ Created on Tue Feb 14 13:58:34 2023
 
 @author: mati/zini
 """
-# Packages
-## System and folders
 import os
 import sys 
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
-
-## Data handling
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))    
 import numpy as np
 import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
-
-## Data visualization
 import matplotlib.pyplot as plt
-
-## Custom
 from core import constants as c
 
 
 def bilinear_interp(_map,v1,v2):
         """
-        bilinear interpolation function. It queries performance maps with required load and Tamb and returns system performance
+        Bilinear interpolation function. It queries performance maps with required load and Tamb and returns system performance
         
-        inputs
-            _map :    performance map
-            v1 :      float value representing chp load at the given timestep [-]
-            v2 :      float air temperature for the considered timestep [°C]
+        Inputs:
+            _map: performance map
+            v1: value representing chp load at the given timestep [-]
+            v2: air temperature for the considered timestep [°C]
       
-        output 
-            y :  exact functioning point for the desired quantity
+        Outputs: 
+            y: exact functioning point for the desired quantity
                 
         """
         # x1 = np.array(_map.columns).astype(float)  # dataset x1 (load)
@@ -57,15 +49,13 @@ def bilinear_interp(_map,v1,v2):
     
 def inverse_bilinear_interp(_map, y, t_amb):
     '''
-    Parameters
-    ----------
-    _map  : pd dataframe of float values - performance map
-    y     : float value representing the system "Limit" value - according to the selected "Method"
-    t_amb : float value of ambient temperature [°C]
+    Inputs:
+        _map: pd dataframe of float values - performance map
+        y: value representing the system "Limit" value - according to the selected "Method"
+        t_amb: value of ambient temperature [°C]
 
-    Returns
-    -------
-    l2    : float value representing working "Load" of the system correspondent to the defined "Limit"\
+    Outputs:
+        l2: value representing working "Load" of the system correspondent to the defined "Limit"\
             for the given tamb
 
     '''
@@ -155,21 +145,17 @@ class Chp:
 
     def bound(self, method, lim, t_amb):
         """
+        Inputs:
+            method: String, method chosen to control the system
+            lim: value representing the actual chosen limit, as a consequence of Method
+            t_amb: value of ambient temperature [°C]
 
-        Parameters
-        ----------
-        method : String, method chosen to control the system
-        lim    : float value representing the actual chosen limit, as a consequence of Method
-        t_amb  : float value of ambient temperature [°C]
+        Raises:
+            ValueError
+                It is not considered to work at a load lower or higher than the given boundaries (0-1)
 
-        Raises
-        ------
-        ValueError
-            It is not considered to work at a load lower or higher than the given boundaries (0-1)
-
-        Returns
-        -------
-        lim    : working load limit of the system for the given conditions. Calculated \
+        Outputs:
+            lim: working load limit of the system for the given conditions. Calculated \
                  via inverse bilinear interpolation if not already given as load value
 
         """
@@ -185,15 +171,15 @@ class Chp:
         """
         The chp system consumes fuel and produces multiple output energy streams as defined by the specific technology
         
-        inputs
-            step:       int step to be simulated
-            t_air:      float air temperature for the considered timestep [°C]
-            demand:     float energy carrier request driving the demand [kW] (electricity,heat or steam [kg/s])
-            demand2:    float energy carrier request as a main CHP co-product  [kW] (electricity,heat or steam [kg/s])
+        Inputs:
+            step: step to be simulated
+            t_air: air temperature for the considered timestep [°C]
+            demand: energy carrier request driving the demand [kW] (electricity,heat or steam [kg/s])
+            demand2: energy carrier request as a main CHP co-product  [kW] (electricity,heat or steam [kg/s])
       
-        output 
-            carrier1:    produced energy stream driving the system functioning [kW] 
-            carrier2:    2nd energy stream produced as co-product [kW]
+        Outputs: 
+            carrier1: produced energy stream driving the system functioning [kW] 
+            carrier2: 2nd energy stream produced as co-product [kW]
             ...
             nth-carrier: nth energy stream produced as co-product [kW]
                 
@@ -291,29 +277,27 @@ class Chp:
     
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kWh]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kWh]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': float, percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         # Specific hydrogen gas turbine parameters 
         self.GT_param = {
@@ -391,29 +375,27 @@ class Absorber:
     
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kWh]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kWh]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 

@@ -5,18 +5,14 @@ class inverter:
 
     def __init__(self,parameters,simulation_hours):
         """
-        
+        Inputs:
+            max efficiency : [0-1]
+            number : number of inverters
+            peakP : peak power of a single inverter
 
-        Parameters
-        ----------
-        max efficiency : float 0-1
-        number : int number of inverters
-        peakP : float peak power of a single inverter
-
-        Returns
-        -------
-        inverter object
-
+        Outputs: inverter object able to:
+            convert DC to AC with efficiency curve, simulating hourly use .use(h, e)
+            track conversion efficiency history .eta_story
         """
         
         self.cost = False # will be updated with tec_cost()
@@ -35,11 +31,12 @@ class inverter:
         
     def use(self,h,e):
         """
-
-        h: int hour to be simulated
-        e: electricity provided (e>0) [kWh]
+        Inputs:
+            h: hour to be simulated
+            e: electricity provided (e>0) [kWh]
       
-        output : e_lost of electricity that hour (e<0) [kWh]
+        Outputs: 
+            e_lost: electricity lost in that hour (e<0) [kWh]
         """
         
         if e <= 0:
@@ -62,29 +59,27 @@ class inverter:
     
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kW]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kW]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 

@@ -26,8 +26,8 @@ def location_balance(simulation_name,loc,var=None):
     
     ###### total energy balances
     
-    carriers = ['electricity','heating water','gas','hydrogen','HP hydrogen']
-    units    = {'electricity': 'kJ', 'hydrogen': 'kg', 'HP hydrogen': 'kg', 'gas':'kJ', 'heating water':'kJ'}
+    carriers = ['electricity','heating water','gas','hydrogen','HP hydrogen','ammonia']
+    units    = {'electricity': 'kJ', 'hydrogen': 'kg', 'HP hydrogen': 'kg', 'ammonia': 'kg', 'gas':'kJ', 'heating water':'kJ'}
     
     if var: 
         
@@ -35,7 +35,7 @@ def location_balance(simulation_name,loc,var=None):
         units    = {var : units[var]}
 
         if var == 'hydrogen' and 'mechanical compressor' in balances[loc][var]:
-            balances[loc][var].pop('mechanical compressor')  # dict.values() to be removed as they alter the total hydrogen balance and ar enot supposed to do so. 
+            balances[loc][var].pop('mechanical compressor')  # dict.values() to be removed as they alter the total hydrogen balance and are not supposed to do so. 
             
     for carrier in carriers:
         balance  = 0   # initializing the variable to visualize the balance at the end of the simulation period
@@ -52,129 +52,7 @@ def location_balance(simulation_name,loc,var=None):
                 
             if negativ != 0:
                 print(b+' '+str(round(negativ,1))+' '+units[carrier])
-                balance += negativ
-                   
-def REC_electricity_balance(simulation_name,noprint=False,mounth=False):
-    
-    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb') as f:
-        balances = pickle.load(f)
-        
-    df = pd.DataFrame(0.00,columns=["Value [kWh]","Value / production [%]","Value / demand [%]"],
-                      index=["SC","CSC","Into l. grid","From l. grid","Into n. grid","From n. grid","Battery losses","Production","Demand"])
-    
-    
-    csc = balances['REC']['electricity']['collective self consumption']*c.P2E/c.kWh2kJ
-    into_grid = -balances['REC']['electricity']['into electricity grid']*c.P2E/c.kWh2kJ
-    from_grid = balances['REC']['electricity']['from electricity grid']*c.P2E/c.kWh2kJ
-    
-    
-    dmc = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365] # duration of months: cumulate [days]             
-    if mounth: # 1-12
-         csc = csc [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
-         into_grid = into_grid [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
-         from_grid = from_grid [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
-    
-    df.loc['CSC', 'Value [kWh]'] = sum(csc)
-    df.loc['Into l. grid', 'Value [kWh]'] = sum(into_grid)
-    df.loc['From l. grid', 'Value [kWh]'] = sum(from_grid)
-    df.loc['Into n. grid', 'Value [kWh]'] = sum(into_grid)  -sum(csc)
-    df.loc['From n. grid', 'Value [kWh]'] = sum(from_grid) -sum(csc)
-    
-    
-    for loc in balances:
-        if loc != 'REC':   
-            balance = balances[loc]['electricity']
-            if 'electricity demand' in balance:
-                demand = balance['electricity demand']
-                if mounth: # 1-12
-                    demand = demand [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
-                df.loc['Demand', 'Value [kWh]'] += -sum(demand)*c.P2E/c.kWh2kJ
-            if 'PV' in balance:
-                pv = balance['PV']
-                if mounth: # 1-12
-                    pv = pv [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
-                df.loc['Production', 'Value [kWh]'] += sum(pv)*c.P2E/c.kWh2kJ
-            if 'wind' in balance:
-                wind = balance['wind']
-                if mounth: # 1-12
-                    pv = pv [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
-                df.loc['Production', 'Value [kWh]'] += sum(wind)*c.P2E/c.kWh2kJ
-          
-    df.loc['SC', 'Value [kWh]'] = df.loc['Demand', 'Value [kWh]'] - df.loc['From n. grid', 'Value [kWh]'] 
-    df.loc['Battery losses', 'Value [kWh]'] = df.loc['Production', 'Value [kWh]'] - df.loc['SC', 'Value [kWh]'] - df.loc['Into n. grid', 'Value [kWh]']
-    
-    for b in df.index:
-        df.loc[b, 'Value / production [%]'] = df.loc[b, 'Value [kWh]'] / df.loc['Production', 'Value [kWh]'] * 100
-        df.loc[b, 'Value / demand [%]'] = df.loc[b, 'Value [kWh]'] / df.loc['Demand', 'Value [kWh]'] *100
-           
-    if not noprint:
-        if mounth:
-            print('\n'+str(mounth))
-        print('\n\nRenewable Energy Community electricity balance: '+simulation_name+'\n') 
-        print(df.astype(int))
-        print('\n')
-    return(df.astype(int))
-
-def hist_12_balances_pc(simulation_name,ymax):
-    
-    sc = []
-    csc = []
-    into_grid = []
-    from_grid = []
-    losses = []
-    
-    for m in np.arange(12):
-        balances = REC_electricity_balance(simulation_name, noprint=True, mounth=m+1)
-        sc.append(balances['Value [kWh]']['SC'])
-        csc.append(balances['Value [kWh]']['CSC'])
-        into_grid.append(balances['Value [kWh]']['Into n. grid'])
-        from_grid.append(balances['Value [kWh]']['From n. grid'])
-        losses.append(balances['Value [kWh]']['Battery losses'])
-        
-    sc = np.array(sc)
-    csc = np.array(csc)
-    x = np.arange(12)  # the label locations
-    width = 0.8  # the width of the bars
-    
-    # Create a figure with two subplots arranged horizontally (1 row, 2 columns)
-    fig, axes = plt.subplots(1, 2, dpi=1000, figsize=(12, 4))
-    
-    ax1 = axes[0]
-    ax2 = axes[1]
-    
-    # Plot the data for the first subplot
-    ax1.bar(x, sc, width, label='Self-Consumption', color='yellowgreen')
-    ax1.bar(x, losses, width, bottom=sc, label='Battery losses', color='tab:purple')
-    ax1.bar(x, csc, width, bottom=sc+losses, label='Collective-Self-Consumption', color='gold')
-    ax1.bar(x, into_grid, width, bottom=sc+csc+losses, label='Into national grid', color='tab:blue')
-
-    ax1.legend()
-    ax1.set_ylabel('Energy produced [kWh/month]')
-    ax1.set_xticks(np.arange(12))
-    ax1.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
-        
-    ax1.set_ylim(0, ymax)
-    ax1.set_title('Production '+simulation_name)
-    ax1.grid(axis='y',zorder=-10)
-    
-    # Plot the data for the second subplot
-    ax2.bar(x, sc, width, label='Self-Sufficiency', color='yellowgreen')
-    ax2.bar(x, csc, width, bottom=sc, label='Collective-Self-Sufficiency', color='gold')
-    ax2.bar(x, from_grid, width, bottom=sc+csc, label='From national grid', color='tomato')
-    
-    ax2.legend()
-    ax2.set_ylabel('Energy consumed [kWh/month]')
-    ax2.set_xticks(np.arange(12))
-    ax2.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
-
-    ax2.set_ylim(0, ymax)
-    ax2.set_title('Demand '+simulation_name)
-    ax2.grid(axis='y',zorder=-10)
-    
-    # Adjust the layout to prevent overlapping of titles and labels
-    plt.tight_layout()
-    
-    plt.show()
+                balance += negativ              
         
 def NPV_plot(study_case):
     ##### economic
@@ -196,7 +74,6 @@ def NPV_plot(study_case):
     plt.xlim(0,len(y)-1)
     plt.show()
                 
-
 def RES_plot(simulation_name,location_name):
       
     with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb')  as f: balances  = pickle.load(f) 
@@ -224,6 +101,7 @@ def RES_plot(simulation_name,location_name):
             plt.show()
 
 def demand_plot(simulation_name,location_name):
+    
       
     with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb')  as f: balances  = pickle.load(f) 
 
@@ -238,6 +116,7 @@ def demand_plot(simulation_name,location_name):
         'hydrogen': 'kg/s',
         'LP hydrogen': 'kg/s',
         'HP hydrogen': 'kg/s',
+        'ammonia': 'kg/s',
         'oxygen': 'kg/s',
         'process steam': 'kg/s',
         'gas': 'Sm^3/s',
@@ -265,12 +144,13 @@ def demand_plot(simulation_name,location_name):
             plt.title(location_name+' '+carrier+' demand')
             plt.xlim(0,x[-1])
             plt.show()
-def LOC_plot(simulation_name):
+            
+def LOC_plot(simulation_name, studycase):
       
     with open('results/pkl/LOC_'+simulation_name+'.pkl', 'rb') as f:
         LOC = pickle.load(f)
            
-    unit = {'H tank': '[kg]', 'HPH tank': '[kg]', 'battery': '[kJ]', 'inertial TES': '[°C]'}
+    unit = {'H tank': '[kg]', 'HPH tank': '[kg]', 'NH3 tank': '[kg]', 'battery': '[kJ]', 'inertial TES': '[°C]'}
     
     for location_name in LOC:
         for tech in LOC[location_name]:
@@ -285,7 +165,61 @@ def LOC_plot(simulation_name):
                 xticks = list(np.linspace(0, len(x) - 1, 13).astype(int))
                 xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
                 plt.xticks(xticks,xticklabels,rotation=45)
+            elif c.simulation_years != 1 and c.timestep == 60:
                 plt.xlabel('Time [hours]')
+            else:
+                plt.xlabel('Timestep')                          
+            plt.title(tech)
+            plt.xlim(0,x[-1])
+            plt.show() 
+            
+    for location_name in LOC:
+        for tech in LOC[location_name]:
+            
+            if tech == "battery":
+                max_LOC = studycase[location_name][tech]['nominal capacity']*c.kWh2kJ
+            elif tech == "NH3 tank" or tech == "H tank":
+                max_LOC = studycase[location_name][tech]['max capacity']
+            elif tech == "inertial TES":
+                pass
+            
+            if tech != "inertial TES":
+                plt.figure(dpi=600)                               
+                y = LOC[location_name][tech]/max_LOC*100
+                x = np.linspace(0,len(y)-1,len(y))        
+                plt.plot(x,y,label=location_name)
+                plt.grid()
+                plt.ylabel('LOC [%]')
+                if c.simulation_years == 1 and c.timestep == 60:
+                    xticks = list(np.linspace(0, len(x) - 1, 13).astype(int))
+                    xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+                    plt.xticks(xticks,xticklabels,rotation=45)
+                elif c.simulation_years != 1 and c.timestep == 60:
+                    plt.xlabel('Time [hours]')
+                else:
+                    plt.xlabel('Timestep')                          
+                plt.title(location_name+' '+tech)
+                plt.xlim(0,x[-1])
+                plt.show() 
+            
+def LOP_plot(simulation_name):
+      
+    with open('results/pkl/LOP_'+simulation_name+'.pkl', 'rb') as f:
+        LOP = pickle.load(f)
+    
+    for location_name in LOP:
+        for tech in LOP[location_name]:
+            
+            plt.figure(dpi=600)                               
+            y = LOP[location_name][tech]
+            x = np.linspace(0,len(y)-1,len(y))        
+            plt.plot(x,y,label=location_name)
+            plt.grid()
+            plt.ylabel('LOP [bar]')
+            if c.simulation_years == 1 and c.timestep == 60:
+                xticks = list(np.linspace(0, len(x) - 1, 13).astype(int))
+                xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+                plt.xticks(xticks,xticklabels,rotation=45)
             elif c.simulation_years != 1 and c.timestep == 60:
                 plt.xlabel('Time [hours]')
             else:
@@ -293,58 +227,6 @@ def LOC_plot(simulation_name):
             plt.title(location_name+' '+tech)
             plt.xlim(0,x[-1])
             plt.show()
-
-def csc_allocation_sum(simulation_name):
-    
-    print('\n'+'Collective-Self-Consumption proportional contribution') 
-    
-    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb') as f:        balances = pickle.load(f)
-        
-    for location_name in balances:
-        csc = balances[location_name]['electricity']['collective self consumption']*c.P2E/c.kWh2kJ
-        from_csc = csc.sum(where=csc>0)
-        to_csc = csc.sum(where=csc<0)
-    
-        print(f"{location_name} {int(from_csc)}  {int(to_csc)}")
-        
-def satisfaction_story(sati):
-    mode = {0: 'no demand', 
-            1: 'demand satisfied by iTES without switching on the HP ',
-            2: 'demand satisfied by switching on the HP',
-            3: 'demand satisfied by switching on the HP and iTES overheated',
-            -1: 'unsatisfied demand because there is not enough power',
-            -2: 'unsatisfied demand because i TES cant reach the minimum required temperature in one step',
-            -3: 'unsatisfied demand becasue t amb is too cold to heat water to the desired temperature'       
-            }
-    
-    print('\n history of heating demand satisfaction:')
-    for m in mode:
-        print(f"{mode[m]}: {(sati == m).sum()} steps")
-  
-def cop(cop):
-    plt.figure(dpi=1000)
-    plt.scatter(np.arange(len(cop)),cop,s=1)
-    plt.ylabel('COP [-]')
-    xticks = list(np.linspace(0, len(cop) - 1, 13).astype(int))
-    xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
-    plt.xticks(xticks,xticklabels,rotation=45)
-    plt.grid()
-    plt.title('HP Coefficient of Performance')
-    plt.xlim(0,len(cop))
-    plt.show()
-    
-def heating_demand(demand):
-    plt.figure(dpi=1000)
-    plt.plot(np.arange(len(demand)),demand,color='red')
-    xticks = list(np.linspace(0, len(demand) - 1, 13).astype(int))
-    xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
-    plt.xticks(xticks,xticklabels,rotation=45)
-    plt.ylabel('Demand [kW]')
-    plt.grid()
-    plt.xlim(0,len(demand))
-    plt.title('Heating water demand')
-    plt.show()
-
 
 def hydrogen_chain_curves(studycase,simulation_name,loc,print_=False,plot=False):
     
@@ -480,6 +362,7 @@ def hydrogen_chain_curves(studycase,simulation_name,loc,print_=False,plot=False)
     return 
 
 def ghg_emissions(simulation_name,path,loc,energy_market, print_= False):
+    
     """
     GHG emissions profile (green index) calculation for hydrogen production.
     Dependent on energy_balance_results function output.
@@ -544,6 +427,7 @@ def ghg_emissions(simulation_name,path,loc,energy_market, print_= False):
         print(f"\nThe H2 GHG intensity calculated for the considered scenario results in {h2_ghg} kgCO2/kgH2")
 
     return h2_ghg
+
 def plot_energy_balances(simulation_name,loc,first_day,last_day,carrier,width=0.9):
     
     with open('results/pkl/consumption_'+simulation_name+'.pkl', 'rb')           as f: consumption  = pickle.load(f) 
@@ -559,6 +443,8 @@ def plot_energy_balances(simulation_name,loc,first_day,last_day,carrier,width=0.
         'process cold water': 'kW',
         'process chilled water': 'kW',
         'hydrogen': 'kg/s',
+        'ammonia': 'kg/s',
+        'nitrogen': 'kg/s',
         'LP hydrogen': 'kg/s',
         'HP hydrogen': 'kg/s',
         'oxygen': 'kg/s',
@@ -657,7 +543,7 @@ def plot_energy_balances(simulation_name,loc,first_day,last_day,carrier,width=0.
         if np.sum(to_csc) != 0:
             ax.bar(x,to_csc,bottom=-load,width=width,label='Surplus to CSC')
       
-    plt.title(loc+' '+carrier+' balances days '+str(first_day)+'-'+str(last_day))
+    plt.title(carrier+' balances days '+str(first_day)+'-'+str(last_day))
     plt.plot(x,load,'k',label='load')     
     plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
     plt.ylabel(f"[{UM[carrier]}]")
@@ -726,7 +612,7 @@ def plot_energy_balances(simulation_name,loc,first_day,last_day,carrier,width=0.
     if 'collective self consumption' in balances[loc][carrier]:
         if np.sum(to_csc) != 0:
             ax.bar(x,to_csc,bottom=-load,width=width,label='Surplus to CSC')
-    plt.title(loc+' '+carrier+' balances days '+str(first_day)+'-'+str(last_day))
+    plt.title(carrier+' balances days '+str(first_day)+'-'+str(last_day))
     plt.plot(x,load,'k',label='load')     
     plt.legend(ncol=2, bbox_to_anchor = (1.01,-0.11))
     plt.ylabel(f"[{UM[carrier]}]")
@@ -741,8 +627,6 @@ def plot_energy_balances(simulation_name,loc,first_day,last_day,carrier,width=0.
     #plt.xticks([0,6,12,18,24,30,36,42,48],['0','6','12','18','24','30','36','42','48'],fontsize=10,color='g')
     #plt.yticks([-2,-1,0,1,2],['-2','-1','0','1','2'])
     plt.show() 
-    
-
 
 def print_and_plot_annual_energy_balances(simulation_name, loc, print_= False):
 
@@ -763,6 +647,8 @@ def print_and_plot_annual_energy_balances(simulation_name, loc, print_= False):
         'process cold water': 'MWh',
         'process chilled water': 'MWh',
         'hydrogen': 't',
+        'ammonia': 't',
+        'nitrogen': 't',
         'LP hydrogen': 't',
         'HP hydrogen': 't',
         'oxygen': 't',
@@ -782,7 +668,7 @@ def print_and_plot_annual_energy_balances(simulation_name, loc, print_= False):
         for tech_name in production[loc][carrier]:
             for tech in production[loc][carrier][tech_name]:
                 # Calculate the total production for each tech_name and carrier
-                if carrier in ['hydrogen', 'LP hydrogen', 'HP hydrogen', 'oxygen', 'process steam']:
+                if carrier in ['hydrogen', 'LP hydrogen', 'HP hydrogen', 'oxygen', 'process steam', 'nitrogen', 'ammonia']:
                     tot = ((sum(production[loc][carrier][tech_name][tech]) * c.timestep / 60) * 3600) / c.simulation_years
                 else:
                     tot = (sum(production[loc][carrier][tech_name][tech]) * c.timestep / 60) / c.simulation_years
@@ -875,7 +761,7 @@ def print_and_plot_annual_energy_balances(simulation_name, loc, print_= False):
         for tech_name in consumption[loc][carrier]:
             for tech in consumption[loc][carrier][tech_name]:
                 # Calculate the total consumption for each tech_name and carrier
-                if carrier in ['hydrogen', 'LP hydrogen', 'HP hydrogen', 'oxygen', 'process steam']:
+                if carrier in ['hydrogen', 'LP hydrogen', 'HP hydrogen', 'oxygen', 'process steam', 'nitrogen', 'ammonia']:
                     tot = ((sum(consumption[loc][carrier][tech_name][tech]) * c.timestep / 60) * 3600) / c.simulation_years
                 else:
                     tot = (sum(consumption[loc][carrier][tech_name][tech]) * c.timestep / 60) / c.simulation_years
@@ -937,4 +823,333 @@ def print_and_plot_annual_energy_balances(simulation_name, loc, print_= False):
         
             # Show the plot
             plt.show()
-                                                                                  
+                                                                                 
+def monthly_balances(simulation_name, loc, carriers_to_plot):
+
+    with open('results/pkl/production_'+simulation_name+'.pkl', 'rb')           as f: production  = pickle.load(f)
+    with open('results/pkl/consumption_'+simulation_name+'.pkl', 'rb')          as f: consumption = pickle.load(f)
+    
+    dates = pd.date_range(start='2023-01-01', periods=8760, freq='h')
+    prod = {}
+    cons = {}
+    monthly_prod = {}
+    monthly_cons = {}
+    
+    all_techs = set()
+    for carrier in production[loc]:
+        if carrier not in carriers_to_plot:
+            continue
+        for tech in production[loc][carrier]:
+            all_techs.add(tech)
+    for carrier in consumption[loc]:
+        if carrier not in carriers_to_plot:
+            continue
+        for tech in consumption[loc][carrier]:
+            all_techs.add(tech)
+
+    color_list = ['lightcoral', 'darkturquoise', 'khaki', 'lightsalmon', 'steelblue', 'plum', 'aquamarine', 'lightgreen', 'hotpink', 'gainsboro', 'powderblue', 'yellowgreen', 'sandybrown', 'seashell', 'peachpuff', 'mediumorchid', 'cornflowerblue']
+    
+    tech_colors = {}
+    for i, tech in enumerate(sorted(all_techs)):
+        tech_colors[tech] = color_list[i % len(color_list)]
+    
+    for carrier in production[loc]:
+        if carrier not in carriers_to_plot:
+            continue
+        prod[carrier] = {}
+        monthly_prod[carrier] = {}
+        for tech in production[loc][carrier]:
+            ts = pd.Series(production[loc][carrier][tech]['Tot'], index=dates)
+            if carrier in ('ammonia', 'hydrogen'):
+                ts *= 3600
+            prod[carrier][tech] = ts
+
+    for carrier in consumption[loc]:
+        if carrier not in carriers_to_plot:
+            continue
+        cons[carrier] = {}
+        monthly_cons[carrier] = {}
+        for tech in consumption[loc][carrier]:
+            ts = -pd.Series(consumption[loc][carrier][tech]['Tot'], index=dates)
+            if carrier in ('ammonia', 'hydrogen'):
+                ts *= 3600
+            cons[carrier][tech] = ts
+
+    for carrier in prod:
+        for tech in prod[carrier]:
+            if carrier == 'electricity':
+                monthly_prod[carrier][tech] = prod[carrier][tech].resample('ME').sum() / 1e6
+            elif carrier in ('ammonia', 'hydrogen'):
+                monthly_prod[carrier][tech] = prod[carrier][tech].resample('ME').sum() / 1e3
+
+    for carrier in cons:
+        for tech in cons[carrier]:
+            if carrier == 'electricity':
+                monthly_cons[carrier][tech] = cons[carrier][tech].resample('ME').sum() / 1e6
+            elif carrier in ('ammonia', 'hydrogen'):
+                monthly_cons[carrier][tech] = cons[carrier][tech].resample('ME').sum() / 1e3
+
+    def plot_stacked(ax, pos_data, neg_data, labels, ylabel, colors, handles):
+        months = pd.date_range(start='2023-01-01', periods=12, freq='MS')
+        bottom_pos = np.zeros(len(months))
+        bottom_neg = np.zeros(len(months))
+        width = 20 
+        
+        for d, label, color in zip(pos_data, labels[:len(pos_data)], colors[:len(pos_data)]):
+            bars = ax.bar(months, d.values, label=label, color=color,
+                          bottom=bottom_pos, width=width, edgecolor='darkgrey', align='center', zorder=10)
+            bottom_pos += d.values
+            if label not in handles: 
+               handles[label] = bars[0]
+            
+        for d, label, color in zip(neg_data, labels[len(pos_data):], colors[len(pos_data):]):
+            bars = ax.bar(months, d.values, label=label, color=color,
+                          bottom=bottom_neg, width=width, edgecolor='darkgrey', align='center', zorder=10)
+            bottom_neg += d.values
+            if label not in handles:  
+               handles[label] = bars[0]
+               
+        y_max = max(bottom_pos.max(), abs(bottom_neg.max())) * 1.1
+        ax.set_ylim([-y_max, y_max])
+            
+        ax.set_ylabel(ylabel)
+        ax.grid(axis='y', alpha=0.3, zorder=-1)
+        ax.axhline(y=0, color='k')
+        ax.set_xticks(months)
+        ax.set_xticklabels([date.strftime('%b') for date in months])
+        ax.set_xlim([months[0] - pd.Timedelta(days=25), months[-1] + pd.Timedelta(days=25)])
+        if carrier == 'hydrogen':
+            title = 'Hydrogen'
+        if carrier == 'ammonia':
+            title = 'Ammonia'
+        if carrier == 'electricity':
+            title = 'Electricity'
+        ax.set_title(title)
+
+    n_plots = len(carriers_to_plot)
+    fig, axes = plt.subplots(dpi=150, ncols=n_plots, figsize=(5 * n_plots, 4))
+
+    if n_plots == 1:
+        axes = [axes]
+
+    handles = {}
+    tech_labels_map = {
+        'ASR': 'ammonia reactor',
+        'H tank': '$\mathrm{H}{_2}$ tank',
+        'NH3 tank': '$NH{_3}$ tank',
+        'electricity grid': 'curtailment' 
+    }
+    
+    for i, carrier in enumerate(carriers_to_plot):
+        pos_data = []
+        neg_data = []
+        labels = []
+        color_list_for_plot = []
+        
+        if carrier in monthly_prod:
+            for tech, series in monthly_prod[carrier].items():
+                pos_data.append(series)
+                labels.append(tech_labels_map.get(tech, tech))
+                color_list_for_plot.append(tech_colors[tech])
+        else:
+            print(f"Attenzione: il carrier '{carrier}' non è presente nei dati di produzione.")
+        
+        if carrier in monthly_cons:
+            for tech, series in monthly_cons[carrier].items():
+                neg_data.append(series)
+                labels.append(tech_labels_map.get(tech, tech))
+                color_list_for_plot.append(tech_colors[tech])
+        else:
+            print(f"Attenzione: il carrier '{carrier}' non è presente nei dati di consumo.")
+        
+        if carrier in ('ammonia', 'hydrogen'):
+            unit = 't'
+        elif carrier == 'electricity':
+            unit = 'GWh'
+        else:
+            unit = ''
+        
+        ylabel = f"{carrier.capitalize()} [{unit}]" if unit else carrier.capitalize()
+
+        plot_stacked(axes[i], pos_data, neg_data, labels, ylabel, color_list_for_plot, handles)
+
+    fig.legend(handles.values(), handles.keys(), loc='upper center', bbox_to_anchor=(0.5, -0.01), ncol=3, fontsize='small')
+
+    plt.subplots_adjust(bottom=0.25)
+    plt.tight_layout()
+    plt.savefig('Monthly balances.svg', bbox_inches = 'tight')
+    plt.show()
+    
+                  
+def REC_electricity_balance(simulation_name,noprint=False,mounth=False):
+    
+    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb') as f:
+        balances = pickle.load(f)
+        
+    df = pd.DataFrame(0.00,columns=["Value [kWh]","Value / production [%]","Value / demand [%]"],
+                      index=["SC","CSC","Into l. grid","From l. grid","Into n. grid","From n. grid","Battery losses","Production","Demand"])
+    
+    
+    csc = balances['REC']['electricity']['collective self consumption']*c.P2E/c.kWh2kJ
+    into_grid = -balances['REC']['electricity']['into electricity grid']*c.P2E/c.kWh2kJ
+    from_grid = balances['REC']['electricity']['from electricity grid']*c.P2E/c.kWh2kJ
+    
+    
+    dmc = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365] # duration of months: cumulate [days]             
+    if mounth: # 1-12
+         csc = csc [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
+         into_grid = into_grid [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
+         from_grid = from_grid [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
+    
+    df.loc['CSC', 'Value [kWh]'] = sum(csc)
+    df.loc['Into l. grid', 'Value [kWh]'] = sum(into_grid)
+    df.loc['From l. grid', 'Value [kWh]'] = sum(from_grid)
+    df.loc['Into n. grid', 'Value [kWh]'] = sum(into_grid)  -sum(csc)
+    df.loc['From n. grid', 'Value [kWh]'] = sum(from_grid) -sum(csc)
+    
+    
+    for loc in balances:
+        if loc != 'REC':   
+            balance = balances[loc]['electricity']
+            if 'electricity demand' in balance:
+                demand = balance['electricity demand']
+                if mounth: # 1-12
+                    demand = demand [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
+                df.loc['Demand', 'Value [kWh]'] += -sum(demand)*c.P2E/c.kWh2kJ
+            if 'PV' in balance:
+                pv = balance['PV']
+                if mounth: # 1-12
+                    pv = pv [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
+                df.loc['Production', 'Value [kWh]'] += sum(pv)*c.P2E/c.kWh2kJ
+            if 'wind' in balance:
+                wind = balance['wind']
+                if mounth: # 1-12
+                    pv = pv [ int(dmc[mounth-1]*24*60/c.timestep) : int(dmc[mounth]*24*60/c.timestep)]
+                df.loc['Production', 'Value [kWh]'] += sum(wind)*c.P2E/c.kWh2kJ
+          
+    df.loc['SC', 'Value [kWh]'] = df.loc['Demand', 'Value [kWh]'] - df.loc['From n. grid', 'Value [kWh]'] 
+    df.loc['Battery losses', 'Value [kWh]'] = df.loc['Production', 'Value [kWh]'] - df.loc['SC', 'Value [kWh]'] - df.loc['Into n. grid', 'Value [kWh]']
+    
+    for b in df.index:
+        df.loc[b, 'Value / production [%]'] = df.loc[b, 'Value [kWh]'] / df.loc['Production', 'Value [kWh]'] * 100
+        df.loc[b, 'Value / demand [%]'] = df.loc[b, 'Value [kWh]'] / df.loc['Demand', 'Value [kWh]'] *100
+           
+    if not noprint:
+        if mounth:
+            print('\n'+str(mounth))
+        print('\n\nRenewable Energy Community electricity balance: '+simulation_name+'\n') 
+        print(df.astype(int))
+        print('\n')
+    return(df.astype(int))
+
+def hist_12_balances_pc(simulation_name,ymax):
+    
+    sc = []
+    csc = []
+    into_grid = []
+    from_grid = []
+    losses = []
+    
+    for m in np.arange(12):
+        balances = REC_electricity_balance(simulation_name, noprint=True, mounth=m+1)
+        sc.append(balances['Value [kWh]']['SC'])
+        csc.append(balances['Value [kWh]']['CSC'])
+        into_grid.append(balances['Value [kWh]']['Into n. grid'])
+        from_grid.append(balances['Value [kWh]']['From n. grid'])
+        losses.append(balances['Value [kWh]']['Battery losses'])
+        
+    sc = np.array(sc)
+    csc = np.array(csc)
+    x = np.arange(12)  # the label locations
+    width = 0.8  # the width of the bars
+    
+    # Create a figure with two subplots arranged horizontally (1 row, 2 columns)
+    fig, axes = plt.subplots(1, 2, dpi=1000, figsize=(12, 4))
+    
+    ax1 = axes[0]
+    ax2 = axes[1]
+    
+    # Plot the data for the first subplot
+    ax1.bar(x, sc, width, label='Self-Consumption', color='yellowgreen')
+    ax1.bar(x, losses, width, bottom=sc, label='Battery losses', color='tab:purple')
+    ax1.bar(x, csc, width, bottom=sc+losses, label='Collective-Self-Consumption', color='gold')
+    ax1.bar(x, into_grid, width, bottom=sc+csc+losses, label='Into national grid', color='tab:blue')
+
+    ax1.legend()
+    ax1.set_ylabel('Energy produced [kWh/month]')
+    ax1.set_xticks(np.arange(12))
+    ax1.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+        
+    ax1.set_ylim(0, ymax)
+    ax1.set_title('Production '+simulation_name)
+    ax1.grid(axis='y',zorder=-10)
+    
+    # Plot the data for the second subplot
+    ax2.bar(x, sc, width, label='Self-Sufficiency', color='yellowgreen')
+    ax2.bar(x, csc, width, bottom=sc, label='Collective-Self-Sufficiency', color='gold')
+    ax2.bar(x, from_grid, width, bottom=sc+csc, label='From national grid', color='tomato')
+    
+    ax2.legend()
+    ax2.set_ylabel('Energy consumed [kWh/month]')
+    ax2.set_xticks(np.arange(12))
+    ax2.set_xticklabels(['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+
+    ax2.set_ylim(0, ymax)
+    ax2.set_title('Demand '+simulation_name)
+    ax2.grid(axis='y',zorder=-10)
+    
+    # Adjust the layout to prevent overlapping of titles and labels
+    plt.tight_layout()
+    
+    plt.show()
+
+def csc_allocation_sum(simulation_name):
+    
+    print('\n'+'Collective-Self-Consumption proportional contribution') 
+    
+    with open('results/pkl/balances_'+simulation_name+'.pkl', 'rb') as f:        balances = pickle.load(f)
+        
+    for location_name in balances:
+        csc = balances[location_name]['electricity']['collective self consumption']*c.P2E/c.kWh2kJ
+        from_csc = csc.sum(where=csc>0)
+        to_csc = csc.sum(where=csc<0)
+    
+        print(f"{location_name} {int(from_csc)}  {int(to_csc)}")
+        
+def satisfaction_story(sati):
+    mode = {0: 'no demand', 
+            1: 'demand satisfied by iTES without switching on the HP ',
+            2: 'demand satisfied by switching on the HP',
+            3: 'demand satisfied by switching on the HP and iTES overheated',
+            -1: 'unsatisfied demand because there is not enough power',
+            -2: 'unsatisfied demand because i TES cant reach the minimum required temperature in one step',
+            -3: 'unsatisfied demand becasue t amb is too cold to heat water to the desired temperature'       
+            }
+    
+    print('\n history of heating demand satisfaction:')
+    for m in mode:
+        print(f"{mode[m]}: {(sati == m).sum()} steps")
+  
+def cop(cop):
+    plt.figure(dpi=1000)
+    plt.scatter(np.arange(len(cop)),cop,s=1)
+    plt.ylabel('COP [-]')
+    xticks = list(np.linspace(0, len(cop) - 1, 13).astype(int))
+    xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+    plt.xticks(xticks,xticklabels,rotation=45)
+    plt.grid()
+    plt.title('HP Coefficient of Performance')
+    plt.xlim(0,len(cop))
+    plt.show()
+    
+def heating_demand(demand):
+    plt.figure(dpi=1000)
+    plt.plot(np.arange(len(demand)),demand,color='red')
+    xticks = list(np.linspace(0, len(demand) - 1, 13).astype(int))
+    xticklabels = ['          Jan','         Feb','          Mar','         Apr','         May','          Jun','         Jul','          Aug','           Sep','          Oct','          Nov','           Dec','']
+    plt.xticks(xticks,xticklabels,rotation=45)
+    plt.ylabel('Demand [kW]')
+    plt.grid()
+    plt.xlim(0,len(demand))
+    plt.title('Heating water demand')
+    plt.show()

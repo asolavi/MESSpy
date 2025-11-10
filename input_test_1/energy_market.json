@@ -6,10 +6,17 @@
 		"costitution cost": 0,
         "OeM": 0},
 		 
-"electricity": {"purchase": "electricity_price.csv", 
+"electricity": {"purchase": 0.30, 
                 "sale": 0.10},
                 
 "interest rate": 0.05,
+
+"Construction_costs":  {"application": false,
+                        "engineering": 0.15,
+                        "installation": 0.3,
+                        "excluded tech": []},
+
+"Additional Opex":  {"application": false},
 
 "inflation rate": { "electricity": 0.02},
 					

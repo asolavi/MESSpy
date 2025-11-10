@@ -1,0 +1,98 @@
+{
+"electricity_consumer": {"electricity demand": {"series"    : "electricity_demand.csv",
+                                                "priority"  : 1},
+
+                         "electricity grid":   {"draw"      : true,
+                                                "feed"      : true,
+                                                "priority"  : 10},  
+                                                                       
+                         "water grid":         {"draw"      : true,
+                                                "feed"      : false,
+                                                "priority"  : 11},
+                                            
+                         "oxygen grid":        {"draw"      : false,
+                                                "feed"      : true,
+                                                "priority"  :  12},
+                                                
+                        "ammonia grid":       {"draw"      : false,
+                                               "feed"      : true,
+                                               "priority"  :  13},
+							                     				
+                         "PV": 	               {"tilt"              : 30,
+							                    "azimuth"           : 180,
+						             	        "optimal angles"    : true,							   
+						            	        "losses"            : 10,
+						             	        "trackingtype"      : 1,						 
+							                    "peakP"             : 120000,
+							                    "serie"             : "TMY",
+							                    "priority"          : 2,
+							                    "ageing"            : false,
+							                    "degradation factor": 1,							   
+							                    "owned"             : true}, 
+
+              		     "electrolyzer":        {"Npower"            : 1000,
+                                  	             "number of modules" : 34,
+                                      	         "stack model"       : "PEM General",
+                                      	         "efficiency"        : false,
+                                      	         "strategy"          : "ammonia production",
+                                      	         "only_renewables"   : true,
+                                      	         "min power module"  : 0.05,
+                                      	         "ageing"            : false,
+                                      	         "power distribution": "parallel",	 
+                                      	         "operational_period": "01-01,31-12",
+                                      	         "state"             : "on",
+                                              	 "priority"          : 3},
+                                             	 
+                         "PSA":                {"P_psa"          : 7,
+                                                "T_psa"          : 298.15,
+                                                "only_renewables": false,
+                                      		    "comp efficiency": 0.85, 
+                                      		    "air factor"     : 5.2,
+                                                "Nflowrate"      : 400,
+                                                "number of units": 3,                                        		       
+                                      		    "priority"       : 5},
+                                
+                        "ASR":                 {"only_renewables"      : false, 
+                                                "comp efficiency"      : 0.85,
+                                                "reactor beds volume"  : "automatic dimensioning",                           
+                                                "cooling COP"          : 3,
+                                                "Treact"               : [663.15,693.15, 683.15],
+                                                "Preact"               : 150,
+                                                "Tcondenser"           : 263.15,
+                                                "nstages N2 compressor": 3,
+                                                "nstages H2 compressor": 2,
+                                                "max_prod"             : 0.44,    
+                                                "calculation mode"     : "simple",
+                                                "strategy"             : "full-time", 
+                                                "operational_period"   : "01-01,31-12",
+                                   	            "state"                : "off",
+                                       		    "priority"             : 4},
+                                           		     
+   		                "NH3 tank":            {"tank model"  : "pressurized",
+                                 		        "max capacity": 1210000,                                           		      
+                                 		        "priority"    : 9},
+                                
+                        "mechanical compressor":{"P_out"             : 210,
+                                                 "P_in"              : 30,
+                                                 "T_in"              : 343.15,
+                                                 "compressor model"  : "multistage_compressor_with_refrigeration",
+                                                 "fluid"             : "Hydrogen",
+                                                 "n_stages"          : 2,
+                                                 "T_IC"              : 298.15,
+                                                 "pressure losses IC": 0,
+                                                 "only_renewables"   : true,
+                                                 "priority"          : 6},
+                                                       		      		     
+ 		                "H tank":              {"max capacity": 28000,
+ 		                                        "min level"   : 0.15,
+                                                "pressure"    : 200,
+                                                "priority"    : 7},
+                                                
+                        "CCGT":                {"Npower"    : 4750,
+                                                "Fuel"      : "ammonia",
+                                                "efficiency": 0.52,
+                                                "priority"  : 8}                                            
+
+		               				      		
+                       }
+}   

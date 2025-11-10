@@ -11,6 +11,8 @@ COSTANTS MODULE
 #%%
 
 #from CoolProp.CoolProp import PropsSI
+import matplotlib.pyplot as plt
+import numpy as np
 
 #%%
 
@@ -20,7 +22,7 @@ FARADAY     =  96485                       # [C/mol]     Faraday constant
 R_UNIVERSAL =  8.3144621                   # [J/(mol*K)] Molar ideal gas constant
 GAMMA       =  1.4                         # [-]         Gamma ideal gas = cp/cv 
 NEPERO      =  2.71828182845904523536      # [-]         Euler's number
-AMBTEMP     =  288                         # [K]         Standard ambient temperature - 15 °C
+AMBTEMP     =  288.15                      # [K]         Standard ambient temperature - 15 °C
 GIBBS       = -237.17                      # [kJ/mol]    Gibbs free energy @ T = 25°C p = 101325 Pa
 R_H2        =  4124.2                      # [J/(kgK)]   H2 characteristic constant
 kWh2kJ      =  3600                        # [kJ/kWh]    Conversion factor from kWh to kJ
@@ -85,14 +87,22 @@ O2MOL_S_E   = 205.1                       # [J/K*mol]    Oxygen Standard Entropy
 
 'Air'
 
-AIRMOLMASS   = 28.96547e-3                # [kg/mol]     Air molar mass
-AIRSDENSITY  = 1.225                      # [kg/Sm^3]    Air density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'Air')
-CP_AIR       = 1.0063                     # [kJ/kgK]     Air mass specific costant pressure specific heat (T = 25°C, P = 101325 Pa)
-CV_AIR       = 0.7178                     # [kJ/kgK]     Air mass specific costant volume specific heat (T = 25°C, P = 101325 Pa) 
+AIRMOLMASS   = 28.96547e-3                 # [kg/mol]      Air molar mass
+AIRSDENSITY  = 1.225                       # [kg/Sm^3]    Air density at Standard conditions (T = 15°C, P = 101325 Pa) -> PropsSI('D', 'T', 273.15, 'P', 101325, 'Air')
+CP_AIR       = 1.0063                      # [kJ/kgK]     Air mass specific costant pressure specific heat (T = 25°C, P = 101325 Pa)
+CV_AIR       = 0.7178                      # [kJ/kgK]     Air mass specific costant volume specific heat (T = 25°C, P = 101325 Pa) 
 
 'Steam'
 
-H1_STEAM800  = 4159.9                     # [kJ/kg]      Steam mass specific enthalpy @ T = 800°C, P = 116000 Pa
+H1_STEAM800 = 4159.9                       # [kJ/kg]     Steam mass specific enthalpy @ T = 800°C, P = 116000 Pa
+
+'Nitrogen'
+N2MOLMASS =  2.80134e-2                 # [kg/mol]     Nitrogen molar mass
+
+'Ammonia'
+NH3MOLMASS =  1.703052e-2                 # [kg/mol]     Ammonia molar mass
+LHVNH3     =  18.6                        # [MJ/kg]      Ammonia Lower Heating Value
+LHV_NH3    =  LHVNH3*(1000/3600)          # [kWh/kg]     Ammonia Lower Heating Value - kWh-mass
 
 
 #%%
@@ -105,4 +115,32 @@ MINUTES_WEEK    = 60*24*7                 # [min/week]  Number of minutes in one
 MINUTES_MONTH   = 60*24*30                # [min/month] Number of minutes in one month
 HOURS_YEAR      = 8760                    # [h/year]    Number of hours in one year
 MINUTES_YEAR    = MINUTES_HOUR*HOURS_YEAR # [min/year]  Number of minutes in one year 
+
+#%%
+
+'POLYNOMIAL FITTING FOR ETA COEFFICIENTS (eta = effectiveness factor for the reaction rate in the ASR)'
+pressure = np.array([150, 225, 300])
+b0_values = np.array([-17.539, -8.213, -4.676])
+b1_values = np.array([0.0769, 0.0377, 0.0235])
+b2_values = np.array([6.901, 6.190, 4.687])
+b3_values = np.array([-1.083e-4, -5.355e-5, -3.463e-5])
+b4_values = np.array([-26.425, -20.869, -11.280])
+b5_values = np.array([4.928e-8, 2.379e-8, 1.541e-8])
+b6_values = np.array([38.937, 27.880, 10.460])
+
+# Calcola e memorizza i coefficienti per ogni valore di b
+poly_coefficients = {
+        'b0': np.polyfit(pressure, b0_values, 2),
+        'b1': np.polyfit(pressure, b1_values, 2),
+        'b2': np.polyfit(pressure, b2_values, 2),
+        'b3': np.polyfit(pressure, b3_values, 2),
+        'b4': np.polyfit(pressure, b4_values, 2),
+        'b5': np.polyfit(pressure, b5_values, 2),
+        'b6': np.polyfit(pressure, b6_values, 2),
+    }
+
+
+
+
+
 

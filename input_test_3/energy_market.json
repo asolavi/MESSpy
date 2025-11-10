@@ -26,9 +26,14 @@
 "gas": {"purchase": 0.5,   
         "sale": 0}, 	  
 		  
-"green_hydrogen_incentives": { "application":false,
-                               "value": 2.5,
-                               "n_years": 10},
+"green_hydrogen_incentives": { "application":false},
+                               
+"Construction_costs":  {"application": false,
+                        "engineering": 0.15,
+                        "installation": 0.3,
+                        "excluded tech": []},
+
+"Additional Opex":  {"application": false},
 		  
 "interest rate": 0.05,
 

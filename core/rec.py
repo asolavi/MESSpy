@@ -32,14 +32,14 @@ class REC:
                         
         output : REC object able to:
             simulate the power flows of each present locations .REC_simulation
-            record REC power balances (electricity, heat, gas and hydrogen) 
+            record REC power balances (electricity, heat, gas, hydrogen and ammonia) 
         
         If general.json is the same of the previous simulation, neither the meteorological data nor the PV has to be updated, 
         otherwise they are downloaded from PVgis considering the typical meteorological year.
         
         """
         ### Add global variables to constants.py as c, to make them known to the other modules.
-        c.timestep          = int(general['timestep'])                                           # [min] timestep 
+        c.timestep          = int(general['timestep'])                                      # [min] timestep 
         c.timestep_number   = int( general['simulation years']* 365*24*60 / c.timestep )    # [-] number of timestep 
         c.simulation_years  = general['simulation years']
         c.P2E               = c.timestep*60                                                 # conversion factor from kW to kJ or from kg/s to kg
@@ -81,10 +81,11 @@ class REC:
 
 
         self.locations = {} # initialise REC locations dictionary
-        self.power_balance = {'electricity': {}, 'heating water': {}, 'cooling water': {}, 'hydrogen': {}, 'gas': {}, 'process steam': {}} # initialise power balances dictionaries
+        self.power_balance = {'electricity': {}, 'heating water': {}, 'cooling water': {}, 'hydrogen': {}, 'gas': {}, 'process steam': {}, 'ammonia': {}, 'nitrogen': {}} # initialise power balances dictionaries
         ### create location objects and add them to the REC locations dictionary
         for location_name in structure: # location_name are the keys of 'structure' dictionary and will be used as keys of REC 'locations' dictionary too
             self.locations[location_name] = location.location(structure[location_name],location_name,path,check_pv,file_structure,file_general) # create location object and add it to REC 'locations' dictionary                     
+
 
     def REC_power_simulation(self):
         """
@@ -102,6 +103,7 @@ class REC:
         
         ### simulation core
         for step in range(c.timestep_number): # step to simulate
+
             for location_name in self.locations: # each locations 
                 self.locations[location_name].loc_power_simulation(step,self.weather) # simulate a single location updating its power balances
                 
@@ -127,7 +129,7 @@ class REC:
             for location_name in self.locations:
                 
                 # battery.collective = 1: 
-                # REC tels to location how mutch electricity can be absorbed or supplied by battery every hour, without decreasing the collective-self-consumption
+                # REC tels to location how much electricity can be absorbed or supplied by battery every hour, without decreasing the collective-self-consumption
                 
                 if 'battery' in self.locations[location_name].technologies and self.locations[location_name].technologies['battery'].collective == 1:
                     
@@ -157,12 +159,14 @@ class REC:
         output: 
             balances/simulation_name.pkl
             LOC/simulation_name.pkl
+            LOP/simulation_name.pkl
         """
         
         balances = {}
         consumption = {}
         production = {}               
         LOC = {}
+        LOP = {}
         ageing = {}
         electrolyzer = {}                 
         balances['REC'] = self.power_balance
@@ -176,6 +180,7 @@ class REC:
             # parameters[location_name] = self.locations[location_name].tech_param                                                                                
             
             LOC[location_name] = {}
+            LOP[location_name] = {}
             ageing[location_name] = {}
             electrolyzer[location_name] = {}    
             parameters[location_name] = {}                            
@@ -187,6 +192,11 @@ class REC:
                     ageing[location_name][tech_name] = [self.locations[location_name].technologies[tech_name].replacements,self.locations[location_name].technologies[tech_name].ageing_history]
                 
             tech_name = 'H tank'
+            if tech_name in self.locations[location_name].technologies:
+                LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC
+                LOP[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOP
+                
+            tech_name = 'NH3 tank'
             if tech_name in self.locations[location_name].technologies:
                 LOC[location_name][tech_name] = self.locations[location_name].technologies[tech_name].LOC
                 
@@ -242,7 +252,8 @@ class REC:
             with open('results/pkl/consumption_'+simulation_name+".pkl", 'wb') as f: pickle.dump(consumption, f)
             with open('results/pkl/production_'+simulation_name+".pkl", 'wb') as f: pickle.dump(production, f)                                                                                             
             with open('results/pkl/tech_params_'+simulation_name+".pkl", 'wb') as f: pickle.dump(parameters, f)
-            with open('results/pkl/LOC_'+simulation_name+".pkl", 'wb') as f: pickle.dump(LOC, f)             
+            with open('results/pkl/LOC_'+simulation_name+".pkl", 'wb') as f: pickle.dump(LOC, f)
+            with open('results/pkl/LOP_'+simulation_name+".pkl", 'wb') as f: pickle.dump(LOP, f)             
             with open('results/pkl/ageing_'+simulation_name+".pkl", 'wb') as f: pickle.dump(ageing, f)   
             with open('results/pkl/tech_cost_'+simulation_name+".pkl", 'wb') as f: pickle.dump(tech_cost, f)   
             
@@ -252,16 +263,58 @@ class REC:
             directory = './results/csv'
             if not os.path.exists(directory): os.makedirs(directory)
             balances_csv = {}
+            consumption_csv = {}
+            production_csv = {}
+            
             
             for loc_name in balances:
                 for carrier in balances[loc_name]:
                     for tech in balances[loc_name][carrier]:
                         key = f"{loc_name} - {carrier} - {tech}"
                         balances_csv[key] = balances[loc_name][carrier][tech]
+                        
+            for loc_name in consumption:
+                for carrier in consumption[loc_name]:
+                    for tech in consumption[loc_name][carrier]:
+                        for tech2 in consumption[loc_name][carrier][tech]:
+                          key = f"{loc_name} - {carrier} - {tech} - {tech2}"
+                          consumption_csv[key] = consumption[loc_name][carrier][tech][tech2]
+                          
+            for loc_name in production:
+                for carrier in production[loc_name]:
+                    for tech in production[loc_name][carrier]:
+                        for tech2 in production[loc_name][carrier][tech]:
+                          key = f"{loc_name} - {carrier} - {tech} - {tech2}"
+                          production_csv[key] = production[loc_name][carrier][tech][tech2]
             
             df = pd.DataFrame(balances_csv)
             df = df.round(4)
             df.to_csv('results/csv/balances_'+simulation_name+'.csv',index=False,sep=sep,decimal=dec)
+            df = pd.DataFrame(consumption_csv)
+            df = df.round(4)
+            df.to_csv('results/csv/consumption_'+simulation_name+'.csv',index=False,sep=sep,decimal=dec)
+            df = pd.DataFrame(production_csv)
+            df = df.round(4)
+            df.to_csv('results/csv/production_'+simulation_name+'.csv',index=False,sep=sep,decimal=dec)
+           
+            
+    def LOP_check(self): 
+        checks = {}
+        mismatch_timesteps = {}
+        for location_name in self.locations:
+            for tech_name in ['ASR', 'mechanical compressor']:
+                if tech_name in self.locations[location_name].technologies:
+                    checks[tech_name], mismatch_timesteps[tech_name] = self.locations[location_name].technologies[tech_name].pressure_buffer_check(self.locations[location_name].technologies['H tank'].original_LOP, self.locations[location_name].technologies['H tank'].LOP)
+            if 'ASR' in checks and 'mechanical compressor' in checks:
+                check = checks['ASR'] and checks['mechanical compressor']
+                mismatch_timesteps_tot = list(set(mismatch_timesteps['ASR']) | set(mismatch_timesteps['mechanical compressor'])) 
+            elif 'ASR' in checks:  
+                check = checks['ASR']
+                mismatch_timesteps_tot = mismatch_timesteps['ASR']
+            elif 'mechanical compressor' in checks:  
+                check = checks['mechanical compressor']
+                mismatch_timesteps_tot = mismatch_timesteps['mechanical compressor']
+        return check, mismatch_timesteps_tot
             
         
     def weather_generation(self,general,path,check,file_general):
@@ -341,5 +394,6 @@ class REC:
     def tech_cost(self,tech_cost):
         for location_name in self.locations:
             for tech_name in self.locations[location_name].technologies:
-                self.locations[location_name].technologies[tech_name].tech_cost(tech_cost[tech_name])
+                   self.locations[location_name].technologies[tech_name].tech_cost(tech_cost[tech_name])
+
                 
