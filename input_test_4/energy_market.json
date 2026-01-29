@@ -1,0 +1,44 @@
+{
+"electricity": {"purchase": 0.25, 
+                "sale": 0.04,
+				"emission intensity": 350},
+                
+"wind electricity": {"purchase": 0.0}, 
+                        
+"pv electricity": {"purchase": 0.0},  
+				 
+"hydrogen": {"purchase": 300000, 
+             "sale": 0},
+             
+"ammonia": {"purchase": 300000, 
+             "sale": 0},
+             
+"oxygen": {"purchase": 0,
+            "sale": 0.0},
+			  
+"water": {"purchase": 2.38,
+            "sale": 0},	  
+		  
+"green_hydrogen_incentives": { "application":false},
+                               
+"Construction_costs":  {"application": false,
+                        "engineering": 0.15,
+                        "installation": 0.3,
+                        "excluded tech": []},
+
+"Additional Opex":  {"application": false},
+		  
+"interest rate": 0.07,
+
+"inflation rate": { "electricity": 0.00,
+                    "gas": 0.00,
+                    "hydrogen": 0.00},
+					
+"decommissioning" : 0,
+                
+"investment years": 20
+
+}
+
+
+

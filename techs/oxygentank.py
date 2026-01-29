@@ -2,7 +2,7 @@ import numpy as np
 import os
 import sys 
 sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
-import constants as c
+from core import constants as c
 from CoolProp.CoolProp import PropsSI
 
 class O2_tank:    
@@ -10,15 +10,16 @@ class O2_tank:
     def __init__(self,parameters,simulation_hours):
         
         """
-        Create a O2_tank object
+        Create a O2_tank object-
     
-        parameters : dictionary
-            'max capacity': float [kg]
-            'pressure': float [bar]
-            'self discharge': ?
+        Inputs:
+            parameters: dictionary
+                'max capacity': [kg]
+                'pressure': [bar]
+                'self discharge': ?
                       
-        output : O2 tank object able to:
-            supply or abrosrb oxygen .use(h,oxy)
+        Outputs: O2 tank object able to:
+            supply or absorb oxygen .use(h,oxy)
             record the level of charge .LOC
             calculate its own volume (pressure) .volume(pressure)
         """
@@ -33,12 +34,13 @@ class O2_tank:
         
     def use(self,h,oxy,constant_demand=False):
         """
-        The O2 tank can supply or absorb oxygen
+        The O2 tank can supply or absorb oxygen.
      
-        h: int hour to be simulated
-        oxy: oxygen requested (oxy<0) or provided (oxy>0) [kg]
+        Inputs:
+            h: hour to be simulated
+            oxy: oxygen requested (oxy<0) or provided (oxy>0) [kg]
       
-        output : oxygen supplied or absorbed that hour [kg]
+        Outputs: oxygen supplied or absorbed that hour [kg]
         """
         if self.max_capacity:
             if oxy >= 0:                                         # charge H tank
@@ -84,9 +86,11 @@ class O2_tank:
         """
         With this function the oxygen tank sizing is simplified as a direct consequence of hydrogne production and consumption
      
-        htankmaxcapacity: hydrogen tank size defined in 'supply-led' mode
+        Inputs:
+            htankmaxcapacity: hydrogen tank size defined in 'supply-led' mode
         
-        output: oxygen tank size
+        Outputs: 
+            self.max_capacity: oxygen tank size
         """
         constant = 9 # [-] units of oxygen produced per each unit of hydrogen
         self.max_capacity = htankmaxcapacity*constant
@@ -96,29 +100,27 @@ class O2_tank:
         
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kg]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': [€/kg]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': [€]
+                'OeM': percentage on initial investment [%]
+                'refud': dict
+                    'rate': percentage of initial investment which will be rimbursed [%]
+                    'years': years for reimbursment
+                'replacement': dict
+                    'rate': replacement cost as a percentage of the initial investment [%]
+                    'years': after how many years it will be replaced
         """
         tech_cost = {key: value for key, value in tech_cost.items()}
 

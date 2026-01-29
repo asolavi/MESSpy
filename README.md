@@ -1,14 +1,15 @@
 # MESSpy - Multi-Energy System Simulator
-An open-source model for simulating multy-energy systems such as Renewable Energy Communities and much more.
+An open-source model for simulating multy-energy systems such as Renewable Energy Communities, about hydrogen supercool things and much more.
 
-![image](https://user-images.githubusercontent.com/83342584/177154238-c0e6b9fa-69b4-40c8-9b45-9d16919e079b.png)
+![MESS_profile](https://github.com/pielube/MESSpy/assets/83342584/50ef84a3-302f-426c-b211-f953b5680db2)
+
 
 ### Authors
-**Pietro Lubello**, **Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo** and **Carlo Carcasci**\
+**Mattia Pasqui**, **Alessandro Mati**, **Andrea Ademollo**,**Mattia Calabrese**, **Valentina Veltroni**, **Pietro Lubello**,  and **Carlo Carcasci**\
 Department of Industrial Engineering (DIEF), University of Florence (UNIFI), Italy
 
 ## Overview
-The Multi-Energy System Simulator has been developed to perform techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study single-standing buildings and hydrogen-integrated energy systems.
+The Multi-Energy System Simulator has been developed to perform techno-economic assesment of Renewable Energy Communities (REC), but can also be used to study single-standing buildings and hydrogen-integrated energy systems. In its last update, it also integrates ammonia synthesis and conversion technologies.
 It can simulate hourly balances of the energy flows between technologies of each location (building) inside the REC and calculate the Net Present Value of each considering the interaction with the national grid given different incentive schemes. The program has been developed to be as general as possible so it can be used to simulate a wide range of different case studies while easily changing their configuration or parameters,both technical and economic.
 The code is extensively commented and can be easily used either as a black box by simply modifying the inputs and working on results or by directly modifying the code.
 
@@ -17,46 +18,87 @@ Models of different technologies are avialable and still under development to in
 - Photovoltaic panels
 - Wind turbines
 - Batteries
-- Electrolyzers
-- Fuel Cells
+- Electrolyzers (PEM, Alkaline)
+- Steam Methane Reformer
+- Fuel Cells (PEM, SOFC)
 - Hydrogen tanks
-- Hydrogen compressor
+- Hydrogen compressors
 - Heat pumps
-- Boilers (ng, ele or H2)
+- Boilers (NG, electric or H2)
 - CHP (combined heat and power)
+- CCGT (H2 or NH3)
+- Ammonia Synthesis Reactor (Haber-Bosch based)
+- Ammonia tanks
+- Ammonia Cracker
+- Air separator (PSA)
 
-### MESS needs the hourly load profiles as input as a .csv file
+### MESS needs the load profiles as input as a .csv file
 Depending on the type of meter installed, these data is in some cases made available by the electricity/gas supplier, in others it must be requested, while sometimes it cannot be obtained. In the latter case, specific programmes are required to generate such profiles in the specific .csv format needed as one of the program inputs. There are many programmes available online, the authors recommend the following:\
 bottom-up model: https://github.com/RAMP-project/RAMP \
-top-down model: https://github.com/PasquinoFI/LoBi
+bottom-up model: https://github.com/open-ideas/StROBe \
+top-down model: https://github.com/PasquinoFI/LoBi \
+top-down model: https://github.com/PasquinoFI/LoBi_residenziale_GSE
+
+### Timestep
+Simulation timestep can vary from 1 to 60 minutes. The time horizon from 1 year to as many years as you want.
 
 ### Requirements
 The model is developed in Python 3.9, and requires the following libraries:
 - numpy
 - pandas
 - os
-- pickle (results are saved in .pickle)
+- pickle (results can be saved in .pickle)
+- csv (results can be saved in csv)
 - json (input files are .json)
 - pvlib (used to download PV production series and weather data based on typical meteorological year)
 - matplotlib (used in post_process)
+- Coolprop (for thermodynamic libraries)
+- scipy (for opimization and interpolation function)
 
 A less up-to-date but fully functional and documented fortran version is also available:
 https://github.com/pielube/MESS-Fortran
 
 ## Quick start
-To get started, download the repository and simply run the "run_test.py" script
+Download Anaconda from https://www.anaconda.com/download: recommended to handle virtual environments and package versions.
+
+From Anaconda Prompt, install git, choose folder, clone repository, create the virtual environment and install Spyder (Authors usually use Spyder as IDE)
+- conda install git
+- cd path/to/your/folder
+- git clone https://github.com/pielube/MESSpy.git
+- cd MESSpy/env
+- conda env create -f MES.yaml
+- conda activate MES
+- conda install spyder
+- spyder
+
+You can run examples now. Three examples analysis are available:
+- "run_test_1" A small energy community composed by two consumers and one prosumer with PV and battery. A sensisivety analysi is also carried out.
+- "run_test_2" A residential building replaces the gas boiler with a heat pump
+- "run_test_3" On-site hydrogen production plant for an industrial facility 
+- "run_test_4" On-site ammonia production, storage and use in a CCGT
+
+Choose one of these, read it and press run!
 
 ### Input files
 You can modify them from a python interface or simply from notepad. The "Input_test" folder contains a demonstration case study. 
 - general.json defines the general input. More details can be found in rec.py prologue comments.
-- structure.json defines the structure of the case study. Here you can define all the locations to consider, each technology inside the locations and technology's parameters. More detalis can be found in rec.py and location.py comments to the code.
+- studycase.json defines the structure of the case study. Here you can define all the locations to consider, each technology inside the locations and technology's parameters. More detalis can be found in rec.py and location.py comments to the code.
 - refcase.json This file has the same structure of structure.json and defines the "buiseness as usual" case, which is used as a reference case for calculating the cash flows of the study case and performing the economic assessment.
-- economics.json defines economic parameters. More details can be found in the comments of economics.py
+- energy_market.json defines economic parameters. More details can be found in the comments of economics.py
+- tech_cost.json defines economic parameters. More details can be found in the comments of economics.py
+
+### Output files
+Results are saved in both .pkl and .csv
 
 ### How to continue
 We suggest you to create your own run_dev.py, input_dev/ and post_process_dev.py and to work on them instead of modifying the existing file used as initial test. 
 
 ## Related works
+- "Techno-economic assessment of Power-to-Ammonia-to-Power for long-term energy storage"\https://doi.org/10.1016/j.enconman.2025.120621
+- "An up-to-date perspective of levelized cost of hydrogen for PV-based grid-connected power-to-hydrogen plants across all Italy"\https://doi.org/10.1016/j.apenergy.2024.124958
+- "Techno-economic assessment of Green Hydrogen Production for Blending in the Natural Gas Network"\https://doi.org/10.1088/1742-6596/2893/1/012066
+- "Exploring the role of hydrogen in decarbonizing energy-intensive industries: A techno-economic analysis of a solid oxide fuel cell cogeneration system"\
+https://doi.org/10.1016/j.jclepro.2024.143254
 - "Optimal sizing of a distributed energy system with thermal load electrification"\
 https://www.e3s-conferences.org/articles/e3sconf/abs/2020/57/e3sconf_ati2020_01006/e3sconf_ati2020_01006.html
 - "The potential of simulating energy systems: The multi energy systems simulator model"\
@@ -70,6 +112,8 @@ https://www.sciencedirect.com/science/article/pii/S2352467723000516
 https://doi.org/10.54337/ijsepm.7625
 - "Assessment of paper industry decarbonization potential via hydrogen in a multi-energy system scenario: A case study"
 https://doi.org/10.1016/j.segy.2023.100114
+- "Community Battery for Collective-Self-Consumption and Energy Arbitrage: Techno-Economic Simulations Assessing Energy Balances, Battery Ageing and Different Market Scenarios"
+https://www.preprints.org/manuscript/202403.0033/v1
 
 ## Citing
 Please cite previous works if you use MESSpy in your research.

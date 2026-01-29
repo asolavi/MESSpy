@@ -1,0 +1,46 @@
+{			
+"PSA": { "cost per unit": "default price correlation",
+        "OeM": 2, 
+        "refund": { "rate": 0, "years": 0},
+        "replacement": {"rate": 50, "years": 10}},
+        
+"NH3 tank": {"cost per unit": "default price correlation",
+           "OeM": 1,           
+           "refund": { "rate": 0, "years": 0},
+           "replacement": {"rate": 80, "years": 30}},
+
+"PV": { "cost per unit": 720, 
+        "OeM": 1, 
+        "refund": { "rate": 0, "years": 0},
+        "replacement": {"rate": 80, "years": 25}},		
+							
+"electrolyzer": {"cost per unit":"default price correlation", 
+                 "OeM": 3, 
+                 "refund": { "rate": 0, "years": 0},
+                 "replacement": {"rate": 30, "years": 10}},  
+				 
+"H tank": {"cost per unit": "default price correlation",
+           "OeM": 2, 
+           "refund": { "rate": 0, "years": 0},
+           "replacement": {"rate": 80, "years": 30}},
+ 
+"mechanical compressor": {"cost per unit": "default price correlation",
+                        "OeM": 4, 
+                        "refund": { "rate": 0, "years": 0},
+                        "replacement": {"rate": 30, "years": 20}},
+
+"ASR": {"cost per unit": "default price correlation",
+        "OeM": 1.5, 
+        "refund": { "rate": 0, "years": 0},
+        "replacement": {"rate": 30, "years": 10}},
+        
+"CCGT": {"cost per unit": "default price correlation",
+        "OeM": 1, 
+        "refund": { "rate": 0, "years": 0},
+        "replacement": {"rate": 30, "years": 10}},  
+        
+"battery": {"cost per unit": 300, 
+            "OeM": 2.5, 
+            "refund": { "rate": 0, "years": 0},
+            "replacement": {"rate": 100, "years": 10}}           			                    									
+}

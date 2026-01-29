@@ -6,29 +6,28 @@ import os
 import sys 
 from scipy.interpolate import interp1d
 from CoolProp.CoolProp import PropsSI
-sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))   # temorarily adding constants module path 
-import constants as c
+sys.path.append(os.path.abspath(os.path.join(os.getcwd(),os.path.pardir)))  
+from core import constants as c
 
 class chp_gt:    
     
-    def __init__(self,parameters,simulation_hours):
+    def __init__(self,parameters,timestep_number):
         
         """
         Create a GT-based CHP object
     
-        parameters : dictionary
-            # 'max capacity': float [kg]
-            # 'pressure': float [bar]
+        Inputs:
+            parameters: dictionary
+                'max capacity': [kg]
+                'pressure': [bar]
         
-                      
-        output : CHP object able to:
-            
-            # supply or abrosrb hydrogen .use(h,hyd)
-            # record the level of charge .LOC
-            # calculate its own volume (pressure) .volume(pressure)
+        Outputs: CHP object able to:
+            supply or absorb hydrogen .use(step,hyd)
+            record the level of charge .LOC
+            calculate its own volume (pressure) .volume(pressure)
         """
         
-        self.cost = False # will be updated with tec_cost()
+        self.cost = False # will be updated with tech_cost()
 
         self.tech = parameters["Technology"]
         self.fuel = parameters["Fuel"]
@@ -139,7 +138,8 @@ class chp_gt:
             self.mylines.append(myline)                                # saving polynomial regression intervals
             self.a1.append(a)
             self.limits[label]=polreg,polreg2
-       
+      
+        
     def map_plot(self):
         
         markers = list(Line2D.markers.keys())
@@ -173,15 +173,15 @@ class chp_gt:
                 
     def bilinear_interpolation(self,mappa,v1,v2):
             """
-            bilinear interpolation function. It queries performance maps with required load and Tamb and returns system performance
+            Bilinear interpolation function. It queries performance maps with required load and Tamb and returns system performance
             
-            inputs
-                mappa:    performance map
-                v1 :      float energy carrier request driving the demand [kWh] (electricity or heat)
-                v2 :      float air temperature for the considered timestep [°C]
+            Inputs:
+                mappa: performance map
+                v1: float energy carrier request driving the demand [kWh] (electricity or heat)
+                v2: float air temperature for the considered timestep [°C]
           
-            output 
-                y :  exact functioning point for the desired quantity
+            Outputs: 
+                y: exact functioning point for the desired quantity
                     
             """
             x1 = np.array(mappa.columns).astype(float)  # dataset x1 (load)
@@ -197,23 +197,24 @@ class chp_gt:
             return y
     
     
-    def use(self,h,t_air,steamdemand,available_hyd):
+    def use(self,step,t_air,steamdemand,available_hyd):
         """
         The chp system consumes fuel and produces multiple output energy streams as defined by the specific technology
         
-        inputs
-            h:      int hour to be simulated
-            t_air:  float air temperature for the considered timestep [°C]
-            demand: float energy carrier request driving the demand [kWh] (electricity,heat or steam [kg/h])
+        Inputs:
+            step: step to be simulated
+            t_air: air temperature for the considered timestep [°C]
+            demand: energy carrier request driving the demand [kW] (electricity,heat or steam [kg/s])
       
-        output 
-            carrier1:    produced energy stream driving the system functioning [kWh] 
-            carrier2:    2nd energy stream produced as co-product [kWh]
+        Outputs: 
+            carrier1: produced energy stream driving the system functioning [kW] 
+            carrier2: 2nd energy stream produced as co-product [kW]
             ...
-            nth-carrier: nth energy stream produced as co-product [kWh]
+            nth-carrier: nth energy stream produced as co-product [kW]
                 
         """
-        demand = abs(steamdemand)/3600                    # converting steam demand from kg/h to kg/s 
+        #demand = abs(steamdemand)/3600                    # converting steam demand from kg/h to kg/s 
+        demand = steamdemand                              # should be given in gk/s
         
         bound = []                                        # operational boundaries of the CHP system for the given air temperature
         for label in self.limits:
@@ -227,38 +228,36 @@ class chp_gt:
         if demand in pd.Interval(bound[0],bound[1],closed='both'):  # steam demand within the GT + HRSG range for given temperature
             pass
            
-        elif demand > self.maxprod[h]:
-            demand = self.maxprod[h]
+        elif demand > self.maxprod[step]:
+            demand = self.maxprod[step]
          
-        elif demand < self.minprod[h]:                    # GT running to avoid shutdowns (given it would be turned off only for 62/8760 h/y  - 0.06 % of the time)
-            demand = self.minprod[h]
+        elif demand < self.minprod[step]:                    # GT running to avoid shutdowns (given it would be turned off only for 62/8760 h/y  - 0.06 % of the time)
+            demand = self.minprod[step]
             
         self.wel[h]= self.bilinear_interpolation(self.Wel_map,demand,t_air)  
-        self.steam_chp[h]= demand
+        self.steam_chp[step]= demand
         # steam_SG[h]= 0   
-        self.steam_miss[h]= 0
-        self.mH2CHP[h]= self.bilinear_interpolation(self.mH2fuel_map,demand,t_air)
+        self.steam_miss[step]= 0
+        self.mH2CHP[step]= self.bilinear_interpolation(self.mH2fuel_map,demand,t_air)
         # mH2SG[h] = 0
         # mH2[h] = mH2CHP[h]
         
-        return(self.steam_chp[h]*3600,self.wel[h],-self.mH2CHP[h]*3600) # return hydrogen supplied
+        #return(self.steam_chp[h]*3600,self.wel[h],-self.mH2CHP[h]*3600) # return hydrogen supplied [kg/s]
+        return(self.steam_chp[step],self.wel[step],-self.mH2CHP[step]) # return hydrogen supplied [kg/s]
+
                     
-
-
     def delta_h(self,s_in_P,s_in_Q,s_out_P,s_out_T):
         '''
-        Parameters
-        ----------
-        s_in_P :  [Pa] required pressure of steam
-        s_in_Q :  [-]  vapor fraction of the inlet steam
-        s_out_P : [Pa] water pressure at the end of condesation process - input conditions of Steam Generator TYPE
-        s_out_T : [K]  water temperature after condensation - input conditions of Steam Generator
+        Inputs:
+            s_in_P: [Pa] required pressure of steam
+            s_in_Q: [-]  vapor fraction of the inlet steam
+            s_out_P: [Pa] water pressure at the end of condesation process - input conditions of Steam Generator TYPE
+            s_out_T: [K]  water temperature after condensation - input conditions of Steam Generator
 
-        Returns
-        -------
-        h2 :      [J/kg] output stream enthalpy
-        h1 :      [J/kg] input stream enthalpy
-        delta :   [kJ/kg] Delta h of transformation
+        Ouputs:
+            h2: [J/kg] output stream enthalpy
+            h1: [J/kg] input stream enthalpy
+            delta: [kJ/kg] Delta h of transformation
 
         '''
         
@@ -268,6 +267,7 @@ class chp_gt:
         delta= (h2-h1)/1000
         
         return (h2,h1,delta)        
+
 
     def pes(self):
         
@@ -308,31 +308,30 @@ class chp_gt:
         
         return(Eta_global,PES)
         
+    
     def tech_cost(self,tech_cost):
         """
-        Parameters
-        ----------
-        tech_cost : dict
-            'cost per unit': float [€/kWh]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Inputs:
+            tech_cost: dict
+                'cost per unit': float [€/kWh]
+                'OeM': float, percentage on initial investment [%]
+                'refud': dict
+                    'rate': float, percentage of initial investment which will be rimbursed [%]
+                    'years': int, years for reimbursment
+                'replacement': dict
+                    'rate': float, replacement cost as a percentage of the initial investment [%]
+                    'years': int, after how many years it will be replaced
 
-        Returns
-        -------
-        self.cost: dict
-            'total cost': float [€]
-            'OeM': float, percentage on initial investment [%]
-            'refud': dict
-                'rate': float, percentage of initial investment which will be rimbursed [%]
-                'years': int, years for reimbursment
-            'replacement': dict
-                'rate': float, replacement cost as a percentage of the initial investment [%]
-                'years': int, after how many years it will be replaced
+        Outputs:
+            self.cost: dict
+                'total cost': float [€]
+                'OeM': float, percentage on initial investment [%]
+                'refud': dict
+                    'rate': float, percentage of initial investment which will be rimbursed [%]
+                    'years': int, years for reimbursment
+                'replacement': dict
+                    'rate': float, replacement cost as a percentage of the initial investment [%]
+                    'years': int, after how many years it will be replaced
         """
              
         tech_cost = {key: value for key, value in tech_cost.items()}

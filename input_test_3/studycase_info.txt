@@ -1,0 +1,226 @@
+Info on studycase input file creation. If you want to use this file as a json, copy-paste and delete the comments.
+																																				 
+
+Each location (es. "Example") has a list of technologies and each technology has its parameters that will be explained below.
+Technologies are used to solve energy balances one at a time following the order dictated by the parameter "priority".
+
+{
+"Example": { "electricity demand"    : { "series"                 : "load_test.csv",  # str name of the serie in input/loads from which the demand have to be read
+				         "priority": 1},                              # The order in which the technology is interrogated at each timestep
+																																														  
+																																																				
+																														
+
+								                      # every energy carrier has the same parameter in "demand", except for hydrogen
+								                      # demand units: 
+								                      # 'electricity', 'heating water', 'cooling water', 'process heat', 'process hot water', process cold water', 'process chilled water'  [kW]
+                                                                                      # 'hydrogen', 'HP hydrogen', 'LP hydrogen', 'oxygen', 'process steam', 'ammonia' [kg/s]
+								                      # 'gas' [Sm3/s]
+										      # 'water' [m3/s]
+
+	     "hydrogen demand"       : { "series"                 : "load_test.csv",  # str name of the serie in input/loads from which the demand have to be read
+			                 "strategy"               : "demand-led",     # str 'demand-led' or 'supply-led':
+							     	                      #	 'demand-led': hydrogen is produced based on actual user consumption and hydrogen-chain components interactions.
+								                      #  'supply-led': hydrogen is produced regardless of demand, maximising production potential and delivering hydrogen at a constant rate. Storage is 										      #                retrospectively sized, and demand csv file must still be provided but doesn't influence energy balances.
+			                 "priority"               : 2},
+
+	     "electricity grid"      : { "draw"                   : true,             # bool, true if the carrier can be withdrawn from the grid
+				         "feed"                   : true,             # bool, true if the carrier can be fed into the grid
+				         "priority"               : 22,               # grid input must be provided for every energy carrier
+																	
+
+	    "PV"                     : { "peakP"                  : 10,               # float, peak DC power [kWp]
+				         "tilt"                   : 30,               # float, surface tilt angle [deg]
+				         "azimuth"                : 0,                # float, azimuth angle [deg]
+					 "optimal angles"         : true,             # bool, calculate the optimum tilt and azimuth angles,if true 'tilt' and 'azimuth' are ignored
+					 "losses"                 : 10,               # float, PV system losses in percentage [%]
+					 "trackingtype"          : 0,                 # int from 0 to 5, PV system tracking type (0 is fixed). Check https://pvlib-python.readthedocs.io/en/v0.9.0/generated/pvlib.iotools.get_pvgis_hourly.html for more info
+				         "serie"                  : "TMY",            # if "TMY"           --> production series of typical meteorological year is used (from pvgis)
+								                      # if INT [2005-2016] --> a serie of the specified year is used (from pvgis)
+								                      # if "filename.csv"  --> a production serie uploaded by the user in input/production is used (must be hourly time series of 8760 production values in  										      # Wh). In this case the other parameters are ignored
+					 "ageing"                 : true,             # bool, ageing considered or not
+					 "degradation factor"     : 1,                # float, annual loss of performance [%] if ageing = true
+				         "owned"                  : true,             # bool, take into account if the plant is owned or only the electricity purchase is considered
+				         "priority"               : 3},
+
+	     "wind"                  : { "model"                  : "power curve",    # str, type of model to be used for wind
+										      # "power curve"   --> wind speed data retrieved from PVGIS. "WScutin", "WScutout" and "WSrated"must be provided.
+                                                                    		      # "betz"     --> model based on Betz theory. "WScutin", "WScutout", "WSrated", "area" and "efficiency" must be provided.
+								                      # "detailed" --> more detailed model based on Saint-Drenan, Yves-Marie et al. "A parametric model for wind turbine power curves incorporating                 										      # environmental conditions." Renewable Energy 157 (2020): 754-768. "WScutin", "WScutout", "WSrated", "area", "cp_max", "beta", "idx", "z_i", "z_hub",  										      # "alpha", "Vu", "Nbands". Parameters "omega_min" and "omega_max" are optional.
+					 "wind speed source"      : "PVGIS",          # str, PVGIS or a csv with wind data at the right height
+				         "Npower"                 : 1000,             # float, rated power [kW]. NOTE: Useless for "betz" and "detailed". 
+				         "area"                   : 39.6,             # float, swept area [m2]. e.g. 39.6 m2 Aircon 10/10 kW. Used in "betz" and "detailed" models.
+				         "efficiency"             : 0.45,             # float, total efficiency [-] = Betz*efficiency. Default = 0.45 (ca. 0.593*0.76, Betz*efficiency). Used in "betz" and "detailed" models.
+				         "WSrated"                : 11.0,             # float, rated wind speed [m/s] e.g. 11.0 m/s Aircon 10/10 kW. Used in all models.
+				         "WScutin"                : 2.5,              # float, cut in wind speed [m/s] e.g. 2.5 m/s Aircon 10/10 kW. Used in all models.
+				         "WScutoff"               : 32.0,             # float, cut off wind speed [m/s] e.g. 32.0 m/s Aircon 10/10 kW. Used all models.
+				         "beta"                   : 0,                # float, blade angle [deg], default 0. Used in "detailed" model.
+				         "cp_max"                 : 0.44,             # float, optional maximum value of power coefficient [-]. If not specified is equal to 0.44. Used in "detailed" model.
+                                         "idx"                    : 5,                # int, values from 0 to 5. Which parametrization of the power coefficient is chosen. See techs/wind for more details. Used in "detailed" model.
+				         "z_i"                    : 40,               # float, wind turbine height [m]. Used in "detailed" model.
+				         "z_hub"                  : 30,               # float, wind turbine hub height [m]. Used in "detailed" model.
+				         "alpha"                  : 0.14,              # float, Exponent law coefficient [-]. Values from 0 to 0.4. See techs/wind for more details. Used in "detailed" model.
+				         "Vu"                     : 0.4,              # float, Veer coefficient [deg/m]. Values from 0 to 0.75. See techs/wind for more details. Used in "detailed" model.
+				         "Nbands"                 : 3,                # int, number of horizontal bands [-]. See techs/wind for more details. Used in detailed model.
+					 "ageing"                 : true,             # bool, ageing considered or not
+					 "degradation factor"     : 1,                # float, annual loss of performance [%] if ageing = true
+     				         "owned"                  : true,             # bool, take into account if the plant is owned or only the electricity purchase is considered
+				         "priority"               : 4},
+		
+	      "inverter"             : { "max efficiency"         : 0.92,             # float, inverter max efficiency (0-1) [-]
+				         "peakP"                  : 2,                # float, peak power of a single inverter [kWp]
+				         "number"                 : 5,                # int, number of inverters used [-]
+				         "priority"               : 5},
+																																					   
+
+	      "battery"              : { "nominal capacity"       : 10,               # float, battery nominal capacity [kWh]
+				         "max charging power"     : 10,               # float, maximum input power [kW]
+				         "max discharging power"  : 10,               # float, maximum output power [kW]
+				         "charging efficiency"    : 0.8,              # float, efficiency of charging process [-]
+				         "discharging efficiency" : 0.8,              # float, efficiency of discharging process [-]
+					 "depth of discharge"     : 0.1,              # float, minimum SOC [-]
+					 "self discharge rate"    : 0.0069,           # float, hourly self discharge rate [-]
+				         "ageing"                 : true,             # bool, true if ageing has to be considered
+				         "life cycles"            : 1000,             # int, number of life cycles to reach the end of battery life [-]
+				         "end life capacity"      : 50,               # float, maximum capacity left at end of life [%]
+				         "collective"             : 0,                # int, 0 or 1. 0 if no collective rules, 1 if priority to csc and then charge or discharge the battery
+				         "priority"               : 6},
+
+              "electrolyzer"         : { "Npower"                 : 20,               # float, nominal power of single electrolyzer module [kW]. If "simple" model it corresponds to total electrolyzer power
+				         "number of modules"      : 3,                # int, number of modules in the stack [-]. Only for "Alkaline" and "PEM General"
+				         "stack model"            : "PEM General",    # str, electrolyzer model. Either "simple", "Alkaline", or "PEM General" are available
+					 "efficiency"		  : 0.7,	      # float, 0-1 efficiency of the electrolyzer. To be used only with "simple" model
+                                         "strategy"               : "hydrogen-first", # str, strategy of use. "hydrogen-first" --> hydrogen production has priority on electricity generation. Electrolyzer works to cover hydrogen demand.
+										      #                        "full-time"     --> operational 24/7, grid connection must be present and hydrogen demand strategy "supply-led".
+                                             # "ammonia production" --> electrolyzer operated to produce ammonia for ASR
+				         "only_renewables"        : false,            # bool, indicates if electrolyzer can only work with RES electricity or also with electricity from grid
+				         "minimum_load"           : 0.2,              # float, 0-1 minimum operational load while functioning [-]
+					 "min power module"       : 0.1,              # float, 0-1 minimum power input for the single module [-]
+					 "power distribution"     : "parallel",       # str, "series" or "parallel" power distribution between the modules [-]
+					 "operational_period"     : "01-01,31-12",    # str, start and end date for electrolyzer operational period
+					 "state"                  : "on",             # str, "on" or "off", state of the electrolyzer in the operational period
+				         "ageing"                 : true,             # bool, true if ageing has to be considered
+				         "priority"               : 7},
+
+              "fuel_cell"            : { "Npower"                 : 20,               # float, nominal power of single fuel cell module [kW]
+				         "number of modules"      : 3,                # int, number of modules in the stack [-] or list, ["automatic dimensioning", "electricity demand", "ASR"] if the number of 
+				                                                      #  modules should be automatically computed based on the technologies included in the system ("electricity demand" and "ASR") in the example
+				         "stack model"            : "PEM General",    # str, fuel cell model. Either "simple", "SOFC" and "PEM General" are available
+					 "electric efficiency"	  : 0.45,	      # float, 0-1 electric efficiency of the fuel cell. To be used only with "simple" model
+					 "thermal efficiency"	  : 0.35,	      # float, 0-1 thermal efficiency of the fuel cell. To be used only with "simple" model
+					 "operational_period"     : "01-01,31-12",    # str, start and end date for electrolyzer operational period
+					 "state"                  : "on",             # str, "on" or "off", state of the electrolyzer in the operational period
+				         "minimum_load"           : 0.2,              # float, 0-1 minimum operational load while functioning [-]
+				         "ageing"                 : true,             # bool, true if ageing has to be considered
+				         "priority"               : 8},
+
+	      "mechanical compressor": { "compressor model"  : "simple compressor",   # "simple_compressor"               --> specific consumption calculation based on interpolation on a given dataset. Only with hydrogen.
+										      # "normal_compressor"               --> single-stage compressor without refrigeration - detailed thermodynamic calculation
+										      # "compressor_with_refrigeration"   --> single-stage compressor with refrigeration - detailed thermodynamic calculation
+										      # "compressor_without_refrigeration"--> multi-stage compressor with refrigeration - detailed thermodynamic calculation
+                                         "fluid"                  : "Hydrogen",       # str, type of selected fluid ("Hydrogen" or "Air"). 
+					 "P_out"                  : 150,              # float, max pressure [bar]
+					 "P_in"                   : 1.01325,          # float, inlet pressure [bar]
+					 "T_in"                   : 303.15,           # float, inlet temperature [K]
+					 "Npower"                 : 50,               # float, nominal power [kW]. To be provided if "flow_rate" is not provided.
+					 "flow_rate"              : 0.1,              # float, mass flow rate [kg/s]. To be provided if "Npower" is not provided
+					 "pressure losses IC"     : 1,                # pressure losses in heat exchangers [%]
+					 "T_IC"                   : 303.15,           # temperature of intercooler [K]
+					 "n_stages"               : 3,                # number of compression stages
+					 "only_renewables"        : false,            # bool, indicates if compressor can only work with RES electricity or also with electricity from grid
+					 "priority"               : 9},
+
+	      "mhhc_compressor"      : { "compressor number"      : 30,               # int, number of compressors working at the same time
+					 "compressor model"       : "Ti-V-Zr",        # str, metal hydride compressor model
+					 "priority"               : 10},
+
+	      "H tank"               : { "max capacity"           : 100,              # float, max hydrogen capacity [kg] or bool "false" if strategy is "supply-led"
+					 "pressure"               : 150,              # float, storage pressure [bar]
+					 "min level"              : 0.1,              # float (0-1], minimum level of charge of the hydrogen tank 
+					 "priority"               : 11},              # SAME PARAMETERS for O2_tank
+																		
+	      "heatpump"             : { "type"                   : 1,                # int, type of heatpump. 1 == air-water (other types not yet implemented)
+					 "nom Pth"                : 30,               # float, power [kW] at nominal condition T_amb = 5°C, T_out = 35°C, rpm = 6000
+					 "t rad heat"             : 45,               # float, temperature radiant system in heating mode [°C]
+					 "t rad cool"             : 12,               # float, temperature radiant system in cooling mode [°C]
+					 "inertial TES volume"    : 100,              # float, volume of thermal energy storage [lt]
+					 "inertial TES dispersion": 50,               # float, dispersion of thermal energy storage [J/kgK]
+					 "REC surplus"            : true,             # bool, allow use of REC PV surplus to charge inertial_TES
+					 "priority"               : 12},
+
+	      "boiler_el"            : { "Ppeak"                  : 30,               # float, peak thermal power [kWp]
+					 "efficiency"             : 0.92,             # float, boiler efficiency [-]. Values between 0 and 1.
+					 "priority"               : 13},              # SAME PARAMETERS for boiler_ng and boiler_h2
+
+              "chp"                  : { "Fuel"                   : "gas",            # str, type of fuel fed to the chp. "gas" or "hydrogen"
+					 "Strategy"               : "process steam"   # str, parameter on which the operatioon of the system is based ("process steam/heat/hot water" or "electricity" -> thermal or electric load follow)
+					 "Co-product"             : "electricity"     # str, co-product energy stream 
+					 "Thermal Output"         : "process steam"   # str, type of stream into which heat from combustion is converted/transferred. "process steam" or "process hot water"
+					 "Control Param"          : { "Lower"  : {"1": {"Method" : "Load",                # "electricity", "process heat", "Load", "TIT", "Tstack"
+                                                                                        "Limit"  : 0.2},                  # [kW], [kW], [-], [K], [K]
+                                                    						       },
+                                         			      "Upper"  : {"1": {"Method" : "Load",                # "electricity", "process heat", "Load", "TIT", "Tstack"
+                                                                                        "Limit" : 0.8}                    # [kW], [kW], [-], [K], [K]                                                  
+                                                                                                      }},                 # control parameters to define operational boundaries of the system
+					 "priority"               : 14},
+
+              "chp_gt"               : { "Technology"             : "Gas Turbine",    #
+					 "Fuel"                   : "Hydrogen",       # specific case of gas turbine hydrogen cogeneration plant. Only available options.
+					 "priority"               : 15},
+
+              "SMR"                  : { "Ppeak"                  : 100,              # float, peak hydrogen output thermal power [kWp]
+					 "efficiency"             : 0.8,              # float, overall Steam Methane Reformer plant efficiency [-]
+					 "priority"               : 16},
+					 
+                "ASR":                 {"only_renewables"      : false, 
+                                        "comp efficiency"      : 0.85,                      # float, compressors politropic efficiency [-]
+                                        "reactor beds volume"  : "automatic dimensioning",  # list with the volumes of the three beds [m^3] or "automatic dimensioning"                          
+                                        "cooling COP"          : 3,                         # float, refrigeration cycle COP [-]
+                                        "Treact"               : [663.15,693.15, 683.15],   # list with the inlet temperatures of the three beds [K]
+                                        "Preact"               : 150,                       # float, pressure inside the reactor [bar]
+                                        "Tcondenser"           : 263.15,                    # float, temperature of the condenser used to separate the liquid ammonia [K]
+                                        "nstages N2 compressor": 3,                         # int, number of stages of the N2 compressor
+                                        "nstages H2 compressor": 2,                         # int, number of stages of the H2 compressor
+                                        "max_prod"             : 0.44,                      # float, maximum flow rate of ammonia producible [kg/s]
+                                        "calculation mode"     : "simple",                  # str, if 'simple' is chosen, the result of the electricity consumed 
+                                                                                            # comes from the interpolation with a fifth degree polynomial of the consumes 
+                                                                                            # inside the operational range of the reactor (max ammonia - min ammonia)
+                                        "strategy"             : "full-time",               # operational strategy, as of now only "full-time" is available
+                                        "buffer control"       : 0.80,                      # float [0-1], level of buffer to operate the ASR at minimum load 
+                                        "operational_period"   : "01-01,31-12",
+                           	            "state"                : "off",
+                               		    "priority"             : 17},
+                               		    
+  		                "NH3 tank":            {"tank model"  : "pressurized",              # str, "pressurized", "semi-refrigerated", or "refrigerated"
+                                		        "max capacity": 1210000,                    # float, max ammonia capacity [kg]                      		      
+                                		        "priority"    : 18},        
+                                		        
+                "PSA":                {"P_psa"          : 7,                                # float, operating PSA pressure [bar]
+                                       "T_psa"          : 298.15,                           # float, operating PSA temperature [K]
+                                       "only_renewables": false,                    
+                             		    "comp efficiency": 0.85,                            # str, compressor politropic efficiency [-]
+                             		    "air factor"     : 5.2,                             # float, [-] air factor (volume of air needed / volume of nitrogen extracted)
+                                       "Nflowrate"      : 400,                              # float, [Nm^3/h] nominal flowrate of nitrogen of the unit
+                                       "number of units": 3,                                # int, number of PSA units                                   		       
+                             		    "priority"       : 19},
+                                                                		                              		    
+            "cracker":             {"Treact"    : 793,                                              # float, reaction temperature [K]       
+                                    "Nflowrate" : 0.01,                                             # float, nominal hydrogen flowrate produced by the cracker [kg/s]
+                                    "number of modules": ["automatic dimensioning", "fuel cell"],   # int or list, number of cracker modules, each sized at the nominal flowrate
+                                                                                                    # If not specified, it is computed based on the downstream fuel cell or CCGT size [-]
+                                    "reactor conversion": 0.995,                                    # float [0-1], ammonia moles cracked / ammonia moles entering the cracker [-]
+                                    "thermal mode": "constant Q",                                   # str, one of 'adiabatic', 'isothermal', 'constant Q'; defines the thermal behavior of the reactor
+                                    "Tout": 870,                                                    # float, required only if 'thermal mode' is 'constant Q', defines the outlet temperature [K]
+                                    "heat source": "ammonia combustion",                            # str, heating source used if heat is required; one of 'electric', 'ammonia combustion'
+                                    "calculation mode": "simple",
+                                    "priority": 20},    
+                                    
+            "CCGT":                {"Npower"    : 4750,                                             # float, nominal power [kW]
+                                    "Fuel"      : "ammonia",                                        # str, type of fuel used ("ammonia" or "hydrogen")
+                                    "efficiency": 0.52,                                             # float [0-1], efficiency of the CCGT [-]
+                                    "priority"  : 21}                                    		    
+       		   
+	}
+                 
+
+				    

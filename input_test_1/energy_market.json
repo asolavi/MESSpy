@@ -1,0 +1,26 @@
+{								 					 
+"REC": {"collective self consumption incentives": "pun_2023.csv",
+		"incentives redistribution": {	"producers": 20,
+										"consumers": 80,
+										"manager": 0},
+		"costitution cost": 0,
+        "OeM": 0},
+		 
+"electricity": {"purchase": 0.30, 
+                "sale": 0.10},
+                
+"interest rate": 0.05,
+
+"Construction_costs":  {"application": false,
+                        "engineering": 0.15,
+                        "installation": 0.3,
+                        "excluded tech": []},
+
+"Additional Opex":  {"application": false},
+
+"inflation rate": { "electricity": 0.02},
+					
+"decommissioning" : 0,				  
+					      
+"investment years": 30
+}
